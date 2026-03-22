@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sprite Sheet Debugger</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; color: #eee; font-family: monospace; font-size: 13px; }
+  #controls {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    background: #16213e; border-bottom: 2px solid #0f3460;
+    padding: 8px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  label { display: flex; align-items: center; gap: 5px; }
+  select, input[type=number], input[type=range] { background: #0f3460; color: #eee; border: 1px solid #e94560; padding: 3px 6px; border-radius: 3px; }
+  input[type=range] { width: 80px; }
+  #info { background: #e94560; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold; min-width: 240px; }
+  #canvas-wrap { margin-top: 56px; overflow: auto; padding: 16px; }
+  canvas { display: block; cursor: crosshair; border: 2px solid #0f3460; image-rendering: pixelated; }
+  #row-info {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #16213e; border-top: 2px solid #0f3460;
+    padding: 6px 12px; display: flex; gap: 20px; align-items: center;
+  }
+  .badge { background: #e94560; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+  .hint { color: #aaa; }
+  button { background: #e94560; color: white; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: monospace; }
+  button:hover { background: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <label>Sheet:
+    <select id="sheet">
+      <optgroup label="── Custom (Character Generator) ──">
+        <option value="/sprites/custom/custom_billy.png">Custom: Billy</option>
+        <option value="/sprites/custom/custom_patrik.png">Custom: Patrik</option>
+        <option value="/sprites/custom/custom_marcos.png">Custom: Marcos</option>
+        <option value="/sprites/custom/custom_sandra.png">Custom: Sandra</option>
+        <option value="/sprites/custom/custom_isaac.png">Custom: Isaac</option>
+        <option value="/sprites/custom/custom_wendy.png">Custom: Wendy</option>
+        <option value="/sprites/custom/custom_charlie.png">Custom: Charlie</option>
+      </optgroup>
+      <optgroup label="── Interior Furniture Sheets (16x16 — use Frame W/H=16) ──">
+        <option value="/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png">Generic / Office (16x16)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/13_Conference_Hall_16x16.png">Conference Hall (16x16)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png">Living Room (16x16)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png">Classroom & Library (16x16)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/23_Television_and_Film_Studio.png">Film Studio (16x16)</option>
+      </optgroup>
+      <optgroup label="── Interior Furniture Sheets (48x48) ──">
+        <option value="/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png">Generic / Office (48x48)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/13_Conference_Hall_48x48.png">Conference Hall (48x48)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/2_LivingRoom_48x48.png">Living Room (48x48)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/5_Classroom_and_library_48x48.png">Classroom & Library (48x48)</option>
+        <option value="/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/23_Television_and_Film_Studio_48x48.png">Film Studio (48x48)</option>
+      </optgroup>
+      <optgroup label="── Premade 48x48 (reference / known good) ──">
+        <option value="/sprites/modern-interiors-paid/2_Characters/Character_Generator/0_Premade_Characters/48x48/Premade_Character_48x48_03.png">Premade 48x48 #03 (ref)</option>
+        <option value="/sprites/modern-interiors-paid/2_Characters/Character_Generator/0_Premade_Characters/48x48/Premade_Character_48x48_05.png">Premade 48x48 #05</option>
+        <option value="/sprites/modern-interiors-paid/2_Characters/Character_Generator/0_Premade_Characters/48x48/Premade_Character_48x48_13.png">Premade 48x48 #13</option>
+      </optgroup>
+    </select>
+  </label>
+  <label>Frame W: <input type="number" id="fw" value="48" min="8" max="256" style="width:55px"></label>
+  <label>Frame H: <input type="number" id="fh" value="48" min="8" max="256" style="width:55px"></label>
+  <label>Zoom: <input type="range" id="zoom" min="1" max="6" value="2" step="0.5">
+    <span id="zoom-val">2×</span>
+  </label>
+  <button id="show-frame">Show Frame at Row</button>
+  <label>Row: <input type="number" id="target-row" value="0" min="0" max="80" style="width:50px"></label>
+  <label>Col: <input type="number" id="target-col" value="0" min="0" max="200" style="width:50px"></label>
+  <div id="info">Click the canvas to inspect a cell</div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="row-info">
+  <span>Sheet: <span id="sz" class="badge">?</span></span>
+  <span>Cols: <span id="ncols" class="badge">?</span></span>
+  <span>Rows: <span id="nrows" class="badge">?</span></span>
+  <span id="selected-info">Click a cell to see its frame coordinates</span>
+  <span class="hint">— Use Frame W/H to adjust grid. Zoom in to see details clearly.</span>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let img = null;
+let zoom = 2;
+let fw = 48, fh = 48;
+let selectedRow = -1, selectedCol = -1;
+
+function getSettings() {
+  fw = parseInt(document.getElementById('fw').value) || 48;
+  fh = parseInt(document.getElementById('fh').value) || 48;
+  zoom = parseFloat(document.getElementById('zoom').value);
+  document.getElementById('zoom-val').textContent = zoom + '×';
+}
+
+function draw() {
+  if (!img) return;
+  getSettings();
+
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const cols = Math.floor(W / fw);
+  const rows = Math.floor(H / fh);
+
+  document.getElementById('sz').textContent = W + '×' + H;
+  document.getElementById('ncols').textContent = cols + ' @ ' + fw + 'px';
+  document.getElementById('nrows').textContent = rows + ' @ ' + fh + 'px';
+
+  canvas.width = W * zoom;
+  canvas.height = H * zoom;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, W * zoom, H * zoom);
+
+  // Highlight selected row (full width)
+  if (selectedRow >= 0) {
+    ctx.fillStyle = 'rgba(233,69,96,0.25)';
+    ctx.fillRect(0, selectedRow * fh * zoom, W * zoom, fh * zoom);
+  }
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,100,0.5)';
+  ctx.lineWidth = 1;
+  for (let c = 0; c <= cols; c++) {
+    ctx.beginPath();
+    ctx.moveTo(c * fw * zoom + 0.5, 0);
+    ctx.lineTo(c * fw * zoom + 0.5, H * zoom);
+    ctx.stroke();
+  }
+  for (let r = 0; r <= rows; r++) {
+    ctx.beginPath();
+    ctx.moveTo(0, r * fh * zoom + 0.5);
+    ctx.lineTo(W * zoom, r * fh * zoom + 0.5);
+    ctx.stroke();
+  }
+
+  // Row numbers (left edge)
+  ctx.font = `bold ${Math.max(9, Math.min(fh * zoom * 0.4, 14))}px monospace`;
+  ctx.textBaseline = 'top';
+  for (let r = 0; r < rows; r++) {
+    const y = r * fh * zoom + 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(1, y - 1, 22, 14);
+    ctx.fillStyle = r === selectedRow ? '#e94560' : '#ffff00';
+    ctx.fillText('R' + r, 2, y);
+  }
+
+  // Column numbers (top edge)
+  for (let c = 0; c < cols; c++) {
+    const x = c * fw * zoom + 2;
+    if (fw * zoom < 20) continue; // skip if too small
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x - 1, 1, 20, 11);
+    ctx.fillStyle = c === selectedCol ? '#e94560' : '#00ffcc';
+    ctx.font = `bold ${Math.max(8, Math.min(fw * zoom * 0.3, 11))}px monospace`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(c, x, 2);
+  }
+
+  // Highlight selected cell
+  if (selectedRow >= 0 && selectedCol >= 0) {
+    ctx.strokeStyle = '#e94560';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      selectedCol * fw * zoom + 1,
+      selectedRow * fh * zoom + 1,
+      fw * zoom - 2,
+      fh * zoom - 2
+    );
+  }
+}
+
+function loadSheet() {
+  const src = document.getElementById('sheet').value;
+  img = new Image();
+  img.onload = draw;
+  img.src = src;
+}
+
+canvas.addEventListener('click', e => {
+  if (!img) return;
+  getSettings();
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  selectedCol = Math.floor(x / (fw * zoom));
+  selectedRow = Math.floor(y / (fh * zoom));
+
+  const px = selectedCol * fw;
+  const py = selectedRow * fh;
+
+  document.getElementById('info').textContent =
+    `Row ${selectedRow}, Col ${selectedCol}  →  frame({x:${px}, y:${py}, w:${fw}, h:${fh}})`;
+  document.getElementById('selected-info').textContent =
+    `Selected: row=${selectedRow} col=${selectedCol} | frame(${selectedCol}, ${selectedRow}) | src x=${px} y=${py}`;
+
+  document.getElementById('target-row').value = selectedRow;
+  document.getElementById('target-col').value = selectedCol;
+  draw();
+});
+
+document.getElementById('show-frame').addEventListener('click', () => {
+  getSettings();
+  const r = parseInt(document.getElementById('target-row').value);
+  const c = parseInt(document.getElementById('target-col').value);
+  selectedRow = r;
+  selectedCol = c;
+  document.getElementById('info').textContent =
+    `Row ${r}, Col ${c}  →  frame({x:${c*fw}, y:${r*fh}, w:${fw}, h:${fh}})`;
+  draw();
+});
+
+['fw','fh','zoom','sheet'].forEach(id => {
+  document.getElementById(id).addEventListener('input', draw);
+});
+document.getElementById('sheet').addEventListener('change', loadSheet);
+
+loadSheet();
+</script>
+</body>
+</html>

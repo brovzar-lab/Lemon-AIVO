@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furniture Browser — Complete Pieces</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+  }
+
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(180deg, #2d2d2d 0%, #1e1e1e 100%);
+    border-bottom: 2px solid #3a3a3a;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .header h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: #fbbf24;
+    white-space: nowrap;
+  }
+
+  .header select,
+  .header input[type="text"],
+  .header input[type="number"] {
+    background: #252525;
+    color: #e0e0e0;
+    border: 1px solid #3a3a3a;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .header input[type="text"] {
+    width: 240px;
+  }
+
+  .header input[type="text"]:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 4px rgba(251,191,36,0.3);
+  }
+
+  .header input[type="number"] { width: 60px; }
+
+  .header label {
+    color: #a0a0a0;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .header .hint {
+    color: #6b6b6b;
+    font-size: 11px;
+    margin-left: auto;
+  }
+
+  /* ── Selected bar ─────────────────────────────────────────────── */
+  .selected-bar {
+    background: #252525;
+    border-bottom: 1px solid #3a3a3a;
+    padding: 8px 20px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 56px;
+    z-index: 99;
+  }
+
+  .selected-bar .tag {
+    background: #3a3a3a;
+    border: 1px solid #fbbf24;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .selected-bar .tag:hover { background: #4a4a4a; }
+  .selected-bar .tag .remove { color: #ef4444; font-weight: bold; }
+
+  #copy-btn {
+    background: #fbbf24;
+    color: #1e1e1e;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: auto;
+  }
+  #copy-btn:hover { background: #f59e0b; }
+
+  /* ── Grid ──────────────────────────────────────────────────────── */
+  .grid-container { padding: 20px; }
+
+  .theme-section { margin-bottom: 30px; }
+
+  .theme-section h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #fbbf24;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #3a3a3a;
+  }
+
+  .theme-section .count {
+    color: #6b6b6b;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  .items-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .item {
+    background: #252525;
+    border: 2px solid #3a3a3a;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .item:hover {
+    border-color: #fbbf24;
+    transform: scale(1.08);
+    z-index: 10;
+  }
+
+  .item.selected {
+    border-color: #fbbf24;
+    background: #3a3a3a;
+    box-shadow: 0 0 8px rgba(251,191,36,0.4);
+  }
+
+  .item img {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+  }
+
+  .item .key-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.85);
+    color: #a0a0a0;
+    font-size: 8px;
+    text-align: center;
+    padding: 2px;
+    display: none;
+    word-break: break-all;
+  }
+
+  .item:hover .key-label { display: block; }
+
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #a0a0a0;
+  }
+
+  .loading .spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #3a3a3a;
+    border-top-color: #fbbf24;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .no-results {
+    text-align: center;
+    padding: 40px;
+    color: #6b6b6b;
+  }
+
+  .tooltip {
+    position: fixed;
+    background: #2d2d2d;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 10px;
+    color: #e0e0e0;
+    font-size: 11px;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+    max-width: 320px;
+  }
+
+  .tooltip img {
+    image-rendering: pixelated;
+    display: block;
+    margin: 0 auto 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🪑 Furniture Picker</h1>
+  <label>
+    🔍 <input type="text" id="search-input" placeholder="Search (desk, chair, plant...)">
+  </label>
+  <label>Theme:
+    <select id="theme-filter">
+      <option value="all">All Themes (5297)</option>
+    </select>
+  </label>
+  <label>Zoom:
+    <input type="number" id="zoom-level" value="2" min="1" max="6" step="1">x
+  </label>
+  <span class="hint">Click items to select · Copy keys at top</span>
+</div>
+
+<div class="selected-bar" id="selected-bar">
+  <span style="color: #6b6b6b; font-size:11px;">Selected: </span>
+  <div id="selected-items" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;"></div>
+  <button id="copy-btn" style="display:none;" onclick="copyKeys()">📋 Copy</button>
+</div>
+
+<div class="grid-container" id="grid-container">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Loading complete furniture pieces…</p>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  let catalog = [];
+  let selectedKeys = new Set();
+
+  async function loadCatalog() {
+    const resp = await fetch('/furniture-singles.json');
+    catalog = await resp.json();
+    console.log('Loaded ' + catalog.length + ' complete furniture pieces');
+    return catalog;
+  }
+
+  function buildThemeFilter() {
+    var themes = [];
+    var seen = {};
+    catalog.forEach(function(c) {
+      if (!seen[c.themeLabel]) {
+        seen[c.themeLabel] = 0;
+      }
+      seen[c.themeLabel]++;
+    });
+    var sel = document.getElementById('theme-filter');
+    Object.keys(seen).sort().forEach(function(t) {
+      var opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t + ' (' + seen[t] + ')';
+      sel.appendChild(opt);
+    });
+    // Pre-select Conference Hall — best office-like furniture
+    sel.value = 'Conference Hall';
+  }
+
+  function getFilteredItems() {
+    var theme = document.getElementById('theme-filter').value;
+    var search = document.getElementById('search-input').value.toLowerCase().trim();
+    var items = theme === 'all' ? catalog : catalog.filter(function(c) { return c.themeLabel === theme; });
+    if (search) {
+      items = items.filter(function(item) {
+        return item.key.toLowerCase().indexOf(search) >= 0 ||
+               item.themeLabel.toLowerCase().indexOf(search) >= 0 ||
+               (item.src && item.src.toLowerCase().indexOf(search) >= 0);
+      });
+    }
+    return items;
+  }
+
+  function renderGrid() {
+    var container = document.getElementById('grid-container');
+    container.innerHTML = '';
+    var zoom = parseInt(document.getElementById('zoom-level').value) || 2;
+    var filtered = getFilteredItems();
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="no-results">No matches. Try another search or theme.</div>';
+      return;
+    }
+
+    // Group by theme
+    var groups = {};
+    filtered.forEach(function(item) {
+      if (!groups[item.themeLabel]) groups[item.themeLabel] = [];
+      groups[item.themeLabel].push(item);
+    });
+
+    Object.keys(groups).sort().forEach(function(theme) {
+      var items = groups[theme];
+      var section = document.createElement('div');
+      section.className = 'theme-section';
+      section.innerHTML = '<h2>' + theme + ' <span class="count">(' + items.length + ' pieces)</span></h2>';
+
+      var grid = document.createElement('div');
+      grid.className = 'items-grid';
+
+      items.forEach(function(entry) {
+        var div = document.createElement('div');
+        div.className = 'item' + (selectedKeys.has(entry.key) ? ' selected' : '');
+        div.dataset.key = entry.key;
+
+        var img = document.createElement('img');
+        img.src = entry.src;
+        img.loading = 'lazy';
+        img.alt = entry.key;
+        
+        // Scale the image by zoom factor - show at natural pixel dimensions × zoom
+        img.onload = function() {
+          img.style.width = (img.naturalWidth * zoom) + 'px';
+          img.style.height = (img.naturalHeight * zoom) + 'px';
+        };
+
+        div.appendChild(img);
+
+        var label = document.createElement('div');
+        label.className = 'key-label';
+        label.textContent = entry.key;
+        div.appendChild(label);
+
+        div.addEventListener('click', function() { toggleSelect(entry, div); });
+        div.addEventListener('mouseenter', function(e) { showTooltip(e, entry); });
+        div.addEventListener('mouseleave', hideTooltip);
+
+        grid.appendChild(div);
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  }
+
+  function toggleSelect(entry, div) {
+    if (selectedKeys.has(entry.key)) {
+      selectedKeys.delete(entry.key);
+      div.classList.remove('selected');
+    } else {
+      selectedKeys.add(entry.key);
+      div.classList.add('selected');
+    }
+    updateSelectedBar();
+  }
+
+  function updateSelectedBar() {
+    var container = document.getElementById('selected-items');
+    var copyBtn = document.getElementById('copy-btn');
+    container.innerHTML = '';
+
+    if (selectedKeys.size === 0) {
+      copyBtn.style.display = 'none';
+      return;
+    }
+
+    copyBtn.style.display = 'block';
+    copyBtn.textContent = '📋 Copy ' + selectedKeys.size + ' Key' + (selectedKeys.size > 1 ? 's' : '');
+
+    selectedKeys.forEach(function(key) {
+      var entry = catalog.find(function(c) { return c.key === key; });
+      if (!entry) return;
+
+      var tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = '<span>' + key + '</span><span class="remove">✕</span>';
+      tag.addEventListener('click', function() {
+        selectedKeys.delete(key);
+        var gridItem = document.querySelector('.item[data-key="' + key + '"]');
+        if (gridItem) gridItem.classList.remove('selected');
+        updateSelectedBar();
+      });
+      container.appendChild(tag);
+    });
+  }
+
+  window.copyKeys = function() {
+    var keys = Array.from(selectedKeys);
+    navigator.clipboard.writeText(keys.join('\n')).then(function() {
+      var btn = document.getElementById('copy-btn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(function() {
+        btn.textContent = '📋 Copy ' + keys.length + ' Key' + (keys.length > 1 ? 's' : '');
+      }, 1500);
+    });
+  };
+
+  function showTooltip(e, entry) {
+    var tooltip = document.getElementById('tooltip');
+    tooltip.innerHTML = '<img src="' + entry.src + '" style="max-width:200px; max-height:200px;">' +
+      '<div><b>Key:</b> ' + entry.key + '</div>' +
+      '<div><b>Theme:</b> ' + entry.themeLabel + '</div>';
+    tooltip.style.display = 'block';
+    positionTooltip(e);
+  }
+
+  function positionTooltip(e) {
+    var tooltip = document.getElementById('tooltip');
+    var x = e.clientX + 16;
+    var y = e.clientY + 16;
+    if (x + 260 > window.innerWidth) x = e.clientX - 270;
+    if (y + 220 > window.innerHeight) y = e.clientY - 230;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+
+  document.addEventListener('mousemove', function(e) {
+    if (document.getElementById('tooltip').style.display === 'block') {
+      positionTooltip(e);
+    }
+  });
+
+  function hideTooltip() {
+    document.getElementById('tooltip').style.display = 'none';
+  }
+
+  function debounce(fn, delay) {
+    var timer;
+    return function() {
+      clearTimeout(timer);
+      timer = setTimeout(fn, delay);
+    };
+  }
+
+  async function init() {
+    await loadCatalog();
+    buildThemeFilter();
+    renderGrid();
+
+    document.getElementById('theme-filter').addEventListener('change', renderGrid);
+    document.getElementById('zoom-level').addEventListener('change', renderGrid);
+    document.getElementById('search-input').addEventListener('input', debounce(renderGrid, 250));
+  }
+
+  init();
+</script>
+</body>
+</html>

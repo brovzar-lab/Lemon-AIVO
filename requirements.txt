@@ -1,0 +1,4 @@
+# Core deps shared across execution scripts.
+# Pin versions when a script depends on specific behavior.
+python-dotenv>=1.0.0
+requests>=2.31.0

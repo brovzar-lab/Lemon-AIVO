@@ -1,0 +1,46 @@
+# Intermediates — always regenerated
+.tmp/
+dist/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.local
+credentials.json
+token.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE (keep .cursor/rules if you add any)
+.idea/
+.vscode/
+
+# Tool configs (machine-specific)
+.claude/
+.superpowers/
+.playwright-mcp/
+
+# Licensed sprite assets (keep locally, too large for git)
+public/sprites/modern-interiors-paid/
+public/sprites/modern-interiors-extracted/
+public/sprites/modern-interiors-preview/
+public/sprites/*.zip
+public/sprites/*.exe
+
+# Reference materials & brand assets
+Ref Stuff/
+Lemon Studios Brand/
+
+# Logs
+firebase-debug.log

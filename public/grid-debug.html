@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Grid Debug — Room Layout Planner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; overflow: auto; }
+  h1 { text-align: center; padding: 12px; color: #ffd700; font-size: 16px; }
+  #controls { text-align: center; padding: 8px; background: #16213e; border-bottom: 1px solid #333; }
+  #controls label { margin: 0 12px; font-size: 13px; }
+  #controls input[type=checkbox] { margin-right: 4px; }
+  #legend { display: flex; gap: 16px; justify-content: center; padding: 8px; font-size: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-swatch { width: 14px; height: 14px; border: 1px solid #555; display: inline-block; }
+  canvas { display: block; margin: 10px auto; border: 2px solid #444; }
+  #info { text-align: center; padding: 8px; font-size: 13px; color: #aaa; }
+  #room-summary { max-width: 900px; margin: 12px auto; padding: 12px; background: #16213e; border-radius: 6px; font-size: 12px; }
+  #room-summary h3 { color: #ffd700; margin-bottom: 8px; }
+  #room-summary table { width: 100%; border-collapse: collapse; }
+  #room-summary th, #room-summary td { padding: 4px 8px; border: 1px solid #333; text-align: left; }
+  #room-summary th { background: #1a1a3e; color: #aaa; }
+</style>
+</head>
+<body>
+<h1>🔍 Grid Debug — Room Layout Planner (45×38 tiles, 16px)</h1>
+
+<div id="controls">
+  <label><input type="checkbox" id="showCoords" checked> Coordinates</label>
+  <label><input type="checkbox" id="showFurniture" checked> Furniture</label>
+  <label><input type="checkbox" id="showSeats" checked> Seat/Stand Tiles</label>
+  <label><input type="checkbox" id="showDoors" checked> Door Tiles</label>
+  <label>Tile Size: <input type="range" id="tileSize" min="12" max="32" value="20"> <span id="tileSizeLabel">20</span>px</label>
+</div>
+
+<div id="legend">
+  <span class="legend-item"><span class="legend-swatch" style="background:#5a3d2b"></span> Wall</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:#c9a96e"></span> Floor</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:#3cb371"></span> Door</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:rgba(0,120,255,0.5)"></span> Seat Tile</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:rgba(255,50,50,0.5)"></span> Billy Stand</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:rgba(255,165,0,0.4)"></span> Furniture</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:rgba(0,200,100,0.4)"></span> Plant</span>
+</div>
+
+<div id="info">Hover over a tile to see its coordinates</div>
+<canvas id="grid"></canvas>
+
+<div id="room-summary">
+  <h3>Room Interiors (usable floor space)</h3>
+  <table id="roomTable"><thead><tr><th>Room</th><th>Interior</th><th>Size</th><th>Door</th><th>Seat</th><th>Billy Stand</th></tr></thead><tbody></tbody></table>
+</div>
+
+<script>
+// ─── ROOM DEFINITIONS (from officeLayout.ts) ───────────────────────────────
+const GRID_COLS = 45;
+const GRID_ROWS = 38;
+const WALL = 1, FLOOR = 0, DOOR = 2;
+
+const ROOMS = [
+  { id: 'isaac',    name: "Isaac (Dev)",     rect: {col:2, row:2, w:13, h:10},  door:{col:8, row:11},  seat:{col:8, row:6},  billy:{col:9, row:6} },
+  { id: 'billy',    name: "Billy (CEO)",     rect: {col:16, row:2, w:15, h:10}, door:{col:22, row:11}, seat:{col:22, row:6}, billy:{col:23, row:6} },
+  { id: 'patrik',   name: "Patrik (CFO)",    rect: {col:32, row:2, w:11, h:10}, door:{col:37, row:11}, seat:{col:37, row:6}, billy:{col:36, row:6} },
+  { id: 'marcos',   name: "Marcos (Lawyer)", rect: {col:2, row:14, w:12, h:10}, door:{col:13, row:18}, seat:{col:7, row:18}, billy:{col:8, row:18} },
+  { id: 'war-room', name: "Board Room",      rect: {col:16, row:14, w:14, h:15}, door:{col:21, row:14}, seat:{col:22, row:22}, billy:{col:22, row:17} },
+  { id: 'sandra',   name: "Sandra (Prod)",   rect: {col:32, row:14, w:11, h:10}, door:{col:32, row:18}, seat:{col:37, row:18}, billy:{col:36, row:18} },
+  { id: 'charlie',  name: "Charlie (Mktg)",  rect: {col:2, row:26, w:12, h:10}, door:{col:13, row:30}, seat:{col:7, row:30}, billy:{col:8, row:30} },
+  { id: 'wendy',    name: "Wendy (Coach)",   rect: {col:32, row:26, w:11, h:10}, door:{col:32, row:30}, seat:{col:37, row:30}, billy:{col:36, row:30} },
+];
+
+// ─── FURNITURE (mirrors DEFAULT_FURNITURE from officeLayout.ts) ─────────────
+// Each: { roomId, type, col, row, w, h, atlas }
+const FURNITURE = [
+  // ISAAC
+  { roomId:'isaac', type:'desk', col:5, row:3, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'isaac', type:'chair', col:6, row:6, w:2, h:2, atlas:'chair-office' },
+  { roomId:'isaac', type:'bookshelf', col:12, row:3, w:2, h:3, atlas:'bookshelf-2tall' },
+  { roomId:'isaac', type:'monitor', col:10, row:3, w:2, h:2, atlas:'isaac-corkboard' },
+  { roomId:'isaac', type:'plant', col:3, row:9, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'isaac', type:'desk', col:3, row:3, w:1, h:2, atlas:'filing-cabinet' },
+  // BILLY
+  { roomId:'billy', type:'desk', col:21, row:3, w:4, h:3, atlas:'desk-wood-3wide' },
+  { roomId:'billy', type:'chair', col:20, row:8, w:2, h:2, atlas:'chair-office' },
+  { roomId:'billy', type:'bookshelf', col:17, row:3, w:2, h:3, atlas:'bookshelf-2tall' },
+  { roomId:'billy', type:'monitor', col:27, row:3, w:2, h:1, atlas:'billy-clapboard' },
+  { roomId:'billy', type:'plant', col:17, row:9, w:2, h:2, atlas:'plant-large-g' },
+  { roomId:'billy', type:'plant', col:28, row:9, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'billy', type:'desk', col:27, row:5, w:2, h:2, atlas:'billy-award' },
+  // PATRIK
+  { roomId:'patrik', type:'desk', col:35, row:3, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'patrik', type:'chair', col:37, row:8, w:2, h:2, atlas:'chair-office' },
+  { roomId:'patrik', type:'bookshelf', col:40, row:3, w:2, h:3, atlas:'shelf-wall' },
+  { roomId:'patrik', type:'monitor', col:33, row:3, w:2, h:2, atlas:'patrik-chart' },
+  { roomId:'patrik', type:'plant', col:40, row:9, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'patrik', type:'desk', col:33, row:6, w:1, h:2, atlas:'desk-lamp' },
+  // MARCOS
+  { roomId:'marcos', type:'desk', col:3, row:15, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'marcos', type:'chair', col:5, row:17, w:2, h:2, atlas:'chair-office' },
+  { roomId:'marcos', type:'bookshelf', col:3, row:19, w:2, h:3, atlas:'bookshelf-2tall' },
+  { roomId:'marcos', type:'monitor', col:10, row:15, w:2, h:2, atlas:'marcos-lawbooks' },
+  { roomId:'marcos', type:'plant', col:12, row:21, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'marcos', type:'desk', col:10, row:19, w:1, h:2, atlas:'filing-cabinet' },
+  // WAR ROOM
+  { roomId:'war-room', type:'table', col:20, row:18, w:5, h:4, atlas:'conf-table' },
+  { roomId:'war-room', type:'chair', col:18, row:19, w:2, h:2, atlas:'conf-chair' },
+  { roomId:'war-room', type:'chair', col:26, row:19, w:2, h:2, atlas:'conf-chair' },
+  { roomId:'war-room', type:'chair', col:18, row:22, w:2, h:2, atlas:'conf-chair' },
+  { roomId:'war-room', type:'chair', col:26, row:22, w:2, h:2, atlas:'conf-chair' },
+  { roomId:'war-room', type:'whiteboard', col:18, row:15, w:3, h:2, atlas:'conf-whiteboard' },
+  { roomId:'war-room', type:'desk', col:26, row:15, w:2, h:2, atlas:'conf-podium' },
+  { roomId:'war-room', type:'plant', col:17, row:26, w:2, h:2, atlas:'plant-large-g' },
+  { roomId:'war-room', type:'plant', col:27, row:26, w:1, h:2, atlas:'plant-potted' },
+  // SANDRA
+  { roomId:'sandra', type:'desk', col:38, row:15, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'sandra', type:'chair', col:34, row:18, w:2, h:2, atlas:'chair-office' },
+  { roomId:'sandra', type:'monitor', col:33, row:15, w:3, h:2, atlas:'sandra-whiteboard' },
+  { roomId:'sandra', type:'bookshelf', col:40, row:15, w:2, h:3, atlas:'shelf-wall' },
+  { roomId:'sandra', type:'plant', col:33, row:21, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'sandra', type:'desk', col:40, row:20, w:1, h:2, atlas:'desk-lamp' },
+  // CHARLIE
+  { roomId:'charlie', type:'desk', col:3, row:27, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'charlie', type:'chair', col:5, row:29, w:2, h:2, atlas:'chair-office' },
+  { roomId:'charlie', type:'bookshelf', col:3, row:31, w:2, h:3, atlas:'bookshelf-2tall' },
+  { roomId:'charlie', type:'monitor', col:10, row:27, w:2, h:2, atlas:'patrik-chart' },
+  { roomId:'charlie', type:'plant', col:12, row:33, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'charlie', type:'plant', col:10, row:31, w:2, h:2, atlas:'plant-large-g' },
+  // WENDY
+  { roomId:'wendy', type:'desk', col:38, row:27, w:2, h:3, atlas:'desk-wood-2wide' },
+  { roomId:'wendy', type:'chair', col:34, row:30, w:2, h:2, atlas:'chair-office' },
+  { roomId:'wendy', type:'plant', col:33, row:27, w:2, h:2, atlas:'wendy-plant' },
+  { roomId:'wendy', type:'bookshelf', col:40, row:27, w:2, h:3, atlas:'shelf-wall' },
+  { roomId:'wendy', type:'plant', col:33, row:33, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'wendy', type:'desk', col:40, row:32, w:1, h:2, atlas:'desk-lamp' },
+  // HALLWAY
+  { roomId:'', type:'plant', col:14, row:12, w:2, h:2, atlas:'plant-large-g' },
+  { roomId:'', type:'plant', col:30, row:12, w:2, h:2, atlas:'plant-large-g' },
+  { roomId:'', type:'plant', col:14, row:23, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'', type:'plant', col:30, row:23, w:1, h:2, atlas:'plant-potted' },
+  { roomId:'', type:'plant', col:14, row:35, w:2, h:2, atlas:'plant-large-g' },
+  { roomId:'', type:'plant', col:30, row:35, w:2, h:2, atlas:'plant-large-g' },
+];
+
+// ─── BUILD TILE MAP (same logic as officeLayout.ts) ─────────────────────────
+const tileMap = [];
+for (let r = 0; r < GRID_ROWS; r++) {
+  tileMap[r] = [];
+  for (let c = 0; c < GRID_COLS; c++) tileMap[r][c] = FLOOR;
+}
+
+function fill(sc, sr, w, h, val) {
+  for (let r = sr; r < sr + h; r++)
+    for (let c = sc; c < sc + w; c++)
+      if (r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS)
+        tileMap[r][c] = val;
+}
+function makeRoom(col, row, w, h) {
+  fill(col, row, w, h, WALL);
+  fill(col+1, row+1, w-2, h-2, FLOOR);
+}
+
+// Rooms
+makeRoom(2, 2, 13, 10);   // Isaac
+makeRoom(16, 2, 15, 10);  // Billy
+makeRoom(32, 2, 11, 10);  // Patrik
+makeRoom(2, 14, 12, 10);  // Marcos
+makeRoom(32, 14, 11, 10); // Sandra
+makeRoom(16, 14, 14, 15); // Board Room
+makeRoom(2, 26, 12, 10);  // Charlie
+makeRoom(32, 26, 11, 10); // Wendy
+
+// Doors
+[[8,11],[22,11],[23,11],[37,11],[38,11],
+ [13,18],[13,19],[32,18],[32,19],
+ [21,14],[22,14],
+ [13,30],[13,31],[32,30],[32,31]].forEach(([c,r]) => { tileMap[r][c] = DOOR; });
+
+// ─── VALIDATION ─────────────────────────────────────────────────────────────
+function validateFurniture() {
+  const errors = [];
+  FURNITURE.forEach((f, i) => {
+    // Find room
+    const room = f.roomId ? ROOMS.find(r => r.id === f.roomId) : null;
+    if (f.roomId && !room) {
+      errors.push({ item: f, msg: `Unknown roomId "${f.roomId}"` });
+      return;
+    }
+    if (room) {
+      const intLeft = room.rect.col + 1;
+      const intTop = room.rect.row + 1;
+      const intRight = room.rect.col + room.rect.w - 2;
+      const intBottom = room.rect.row + room.rect.h - 2;
+      // Check bounds
+      if (f.col < intLeft) errors.push({ item: f, msg: `col ${f.col} < interior left ${intLeft}` });
+      if (f.col + f.w - 1 > intRight) errors.push({ item: f, msg: `right edge ${f.col+f.w-1} > interior right ${intRight}` });
+      if (f.row < intTop) errors.push({ item: f, msg: `row ${f.row} < interior top ${intTop}` });
+      if (f.row + f.h - 1 > intBottom) errors.push({ item: f, msg: `bottom edge ${f.row+f.h-1} > interior bottom ${intBottom}` });
+      // Check seat/stand overlap
+      for (let r = f.row; r < f.row + f.h; r++) {
+        for (let c = f.col; c < f.col + f.w; c++) {
+          if (c === room.seat.col && r === room.seat.row) errors.push({ item: f, msg: `OVERLAPS seat tile (${c},${r})` });
+          if (c === room.billy.col && r === room.billy.row) errors.push({ item: f, msg: `OVERLAPS billy-stand tile (${c},${r})` });
+        }
+      }
+    }
+    // Check wall overlap
+    for (let r = f.row; r < f.row + f.h; r++) {
+      for (let c = f.col; c < f.col + f.w; c++) {
+        if (r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS) {
+          if (tileMap[r][c] === WALL) errors.push({ item: f, msg: `tile (${c},${r}) is a WALL` });
+        }
+      }
+    }
+  });
+  return errors;
+}
+
+// ─── CANVAS RENDERING ───────────────────────────────────────────────────────
+const canvas = document.getElementById('grid');
+const ctx = canvas.getContext('2d');
+const infoEl = document.getElementById('info');
+
+function getTileSize() { return parseInt(document.getElementById('tileSize').value); }
+
+function render() {
+  const T = getTileSize();
+  const showCoords = document.getElementById('showCoords').checked;
+  const showFurn = document.getElementById('showFurniture').checked;
+  const showSeats = document.getElementById('showSeats').checked;
+  const showDoors = document.getElementById('showDoors').checked;
+
+  canvas.width = GRID_COLS * T + 30;  // +30 for left gutter
+  canvas.height = GRID_ROWS * T + 20; // +20 for top gutter
+  const ox = 30, oy = 20; // offsets for gutters
+
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw tiles
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const x = ox + c * T;
+      const y = oy + r * T;
+      const tile = tileMap[r][c];
+      if (tile === WALL) ctx.fillStyle = '#5a3d2b';
+      else if (tile === DOOR) ctx.fillStyle = showDoors ? '#3cb371' : '#c9a96e';
+      else ctx.fillStyle = '#c9a96e';
+      ctx.fillRect(x, y, T - 1, T - 1);
+    }
+  }
+
+  // Draw furniture
+  if (showFurn) {
+    const errors = validateFurniture();
+    const errorItems = new Set(errors.map(e => e.item));
+
+    FURNITURE.forEach(f => {
+      const x = ox + f.col * T;
+      const y = oy + f.row * T;
+      const hasError = errorItems.has(f);
+      if (f.type === 'plant') {
+        ctx.fillStyle = hasError ? 'rgba(255,0,0,0.5)' : 'rgba(0,200,100,0.4)';
+      } else if (f.type === 'chair') {
+        ctx.fillStyle = hasError ? 'rgba(255,0,0,0.5)' : 'rgba(180,140,60,0.5)';
+      } else if (f.type === 'table') {
+        ctx.fillStyle = hasError ? 'rgba(255,0,0,0.5)' : 'rgba(200,150,80,0.5)';
+      } else {
+        ctx.fillStyle = hasError ? 'rgba(255,0,0,0.5)' : 'rgba(255,165,0,0.4)';
+      }
+      ctx.fillRect(x, y, f.w * T - 1, f.h * T - 1);
+      ctx.strokeStyle = hasError ? '#ff0000' : '#fff';
+      ctx.lineWidth = hasError ? 2 : 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, f.w * T - 2, f.h * T - 2);
+
+      // Label
+      if (T >= 16) {
+        ctx.fillStyle = hasError ? '#ff0000' : '#fff';
+        ctx.font = `${Math.min(T * 0.5, 10)}px monospace`;
+        ctx.textAlign = 'center';
+        const label = f.atlas.replace('desk-wood-','D').replace('chair-office','Ch')
+          .replace('bookshelf-2tall','BS').replace('plant-potted','🌱')
+          .replace('plant-large-g','🌿').replace('filing-cabinet','FC')
+          .replace('desk-lamp','💡').replace('shelf-wall','SW')
+          .replace('conf-table','CT').replace('conf-chair','CC')
+          .replace('conf-whiteboard','WB').replace('conf-podium','PD');
+        ctx.fillText(label, x + f.w * T / 2, y + f.h * T / 2 + 3);
+      }
+    });
+
+    // Show error count
+    if (errors.length > 0) {
+      console.warn('FURNITURE VALIDATION ERRORS:', errors.length);
+      errors.forEach(e => console.warn(`  ${e.item.roomId} ${e.item.atlas} at (${e.item.col},${e.item.row}): ${e.msg}`));
+    }
+  }
+
+  // Draw seat/stand markers
+  if (showSeats) {
+    ROOMS.forEach(room => {
+      // Seat tile (blue)
+      ctx.fillStyle = 'rgba(0,120,255,0.6)';
+      ctx.fillRect(ox + room.seat.col * T + 2, oy + room.seat.row * T + 2, T - 5, T - 5);
+      ctx.fillStyle = '#fff'; ctx.font = '8px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('S', ox + room.seat.col * T + T/2, oy + room.seat.row * T + T/2 + 3);
+
+      // Billy stand (red)
+      ctx.fillStyle = 'rgba(255,50,50,0.6)';
+      ctx.fillRect(ox + room.billy.col * T + 2, oy + room.billy.row * T + 2, T - 5, T - 5);
+      ctx.fillStyle = '#fff';
+      ctx.fillText('B', ox + room.billy.col * T + T/2, oy + room.billy.row * T + T/2 + 3);
+    });
+  }
+
+  // Draw coordinate labels
+  if (showCoords) {
+    ctx.fillStyle = '#888';
+    ctx.font = `${Math.min(T * 0.55, 9)}px monospace`;
+    ctx.textAlign = 'center';
+    // Column headers
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (c % 2 === 0 || T >= 20) {
+        ctx.fillText(c.toString(), ox + c * T + T/2, 14);
+      }
+    }
+    // Row headers
+    ctx.textAlign = 'right';
+    for (let r = 0; r < GRID_ROWS; r++) {
+      if (r % 2 === 0 || T >= 20) {
+        ctx.fillText(r.toString(), 26, oy + r * T + T/2 + 3);
+      }
+    }
+  }
+
+  // Room labels
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillStyle = '#ffd700';
+  ROOMS.forEach(room => {
+    const cx = ox + (room.rect.col + room.rect.w / 2) * T;
+    const cy = oy + (room.rect.row + 1.5) * T;
+    ctx.fillText(room.name, cx, cy);
+  });
+}
+
+// ─── HOVER TOOLTIP ──────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', (e) => {
+  const T = getTileSize();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left - 30;
+  const my = e.clientY - rect.top - 20;
+  const col = Math.floor(mx / T);
+  const row = Math.floor(my / T);
+  if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+    const tile = tileMap[row][col];
+    const tileStr = tile === WALL ? 'WALL' : tile === DOOR ? 'DOOR' : 'FLOOR';
+    let furnStr = '';
+    FURNITURE.forEach(f => {
+      if (col >= f.col && col < f.col + f.w && row >= f.row && row < f.row + f.h) {
+        furnStr += ` | Furniture: ${f.atlas} (${f.col},${f.row} ${f.w}×${f.h})`;
+      }
+    });
+    infoEl.textContent = `Tile (col=${col}, row=${row}) = ${tileStr}${furnStr}`;
+  }
+});
+
+// ─── ROOM SUMMARY TABLE ────────────────────────────────────────────────────
+function buildRoomTable() {
+  const tbody = document.querySelector('#roomTable tbody');
+  ROOMS.forEach(room => {
+    const r = room.rect;
+    const intL = r.col + 1, intT = r.row + 1, intR = r.col + r.w - 2, intB = r.row + r.h - 2;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${room.name} (${room.id})</td>
+      <td>(${intL},${intT})→(${intR},${intB})</td>
+      <td>${intR - intL + 1}×${intB - intT + 1}</td>
+      <td>(${room.door.col},${room.door.row})</td>
+      <td>(${room.seat.col},${room.seat.row})</td>
+      <td>(${room.billy.col},${room.billy.row})</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── VALIDATION RESULTS ────────────────────────────────────────────────────
+function showValidation() {
+  const errors = validateFurniture();
+  const div = document.createElement('div');
+  div.style.cssText = 'max-width:900px;margin:12px auto;padding:12px;background:#2a1520;border-radius:6px;font-size:12px;';
+  if (errors.length === 0) {
+    div.innerHTML = '<h3 style="color:#3cb371">✅ All furniture placements valid!</h3>';
+  } else {
+    div.innerHTML = `<h3 style="color:#ff4444">❌ ${errors.length} Placement Error(s)</h3>`;
+    const ul = document.createElement('ul');
+    ul.style.cssText = 'list-style:none;padding:0;';
+    errors.forEach(e => {
+      const li = document.createElement('li');
+      li.style.cssText = 'color:#ff8888;padding:2px 0;';
+      li.textContent = `[${e.item.roomId || 'hallway'}] ${e.item.atlas} @ (${e.item.col},${e.item.row} ${e.item.w}×${e.item.h}): ${e.msg}`;
+      ul.appendChild(li);
+    });
+    div.appendChild(ul);
+  }
+  document.body.appendChild(div);
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+render();
+buildRoomTable();
+showValidation();
+
+document.querySelectorAll('#controls input').forEach(el => el.addEventListener('change', () => {
+  document.getElementById('tileSizeLabel').textContent = getTileSize();
+  render();
+}));
+document.getElementById('tileSize').addEventListener('input', () => {
+  document.getElementById('tileSizeLabel').textContent = getTileSize();
+  render();
+});
+</script>
+</body>
+</html>

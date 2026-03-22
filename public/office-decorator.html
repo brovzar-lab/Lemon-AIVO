@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Office Decorator v2</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            background: #0f0e1a;
+            color: #e2e0d8;
+            font-family: 'Segoe UI', system-ui, monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none
+        }
+
+        /* ── TOOLBAR ── */
+        #toolbar {
+            background: #1a1830;
+            border-bottom: 1px solid #2d2b45;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            flex-wrap: wrap
+        }
+
+        #toolbar h1 {
+            font-size: 13px;
+            color: #fbbf24;
+            font-weight: 700;
+            margin-right: 4px
+        }
+
+        .sep {
+            width: 1px;
+            background: #2d2b45;
+            height: 20px;
+            margin: 0 4px
+        }
+
+        button {
+            background: #242240;
+            color: #e2e0d8;
+            border: 1px solid #3d3b5e;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background .15s
+        }
+
+        button:hover {
+            background: #322e60
+        }
+
+        button.active {
+            background: #fbbf24;
+            color: #0f0e1a;
+            border-color: #fbbf24
+        }
+
+        button.danger {
+            border-color: #ef4444;
+            color: #ef4444
+        }
+
+        button.danger:hover {
+            background: #ef4444;
+            color: #fff
+        }
+
+        button.ok {
+            border-color: #10b981;
+            color: #10b981
+        }
+
+        button.ok:hover {
+            background: #10b981;
+            color: #fff
+        }
+
+        #zoom-pct {
+            width: 44px;
+            text-align: center;
+            font-size: 11px;
+            color: #fbbf24;
+            background: transparent;
+            border: none;
+            font-family: inherit
+        }
+
+        /* ── MAIN ── */
+        #main {
+            display: flex;
+            flex: 1;
+            overflow: hidden
+        }
+
+        /* ── OFFICE CANVAS ── */
+        #office-wrap {
+            flex: 1;
+            overflow: hidden;
+            background: #0a0918;
+            position: relative;
+            cursor: crosshair
+        }
+
+        #office-canvas {
+            image-rendering: pixelated;
+            position: absolute;
+            top: 0;
+            left: 0
+        }
+
+        #room-tooltip {
+            position: absolute;
+            bottom: 6px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fbbf24;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            pointer-events: none
+        }
+
+        /* ── RIGHT PANEL ── */
+        #right {
+            width: 310px;
+            min-width: 310px;
+            background: #13122a;
+            border-left: 1px solid #2d2b45;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden
+        }
+
+        /* Sheet tabs */
+        #sheet-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #2d2b45;
+            flex-shrink: 0
+        }
+
+        .stab {
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 3px
+        }
+
+        /* Sprite sheet canvas */
+        #sheet-scroll {
+            flex: 1;
+            overflow: auto;
+            background: #0a0918;
+            position: relative
+        }
+
+        #sheet-canvas {
+            image-rendering: pixelated;
+            cursor: crosshair;
+            display: block
+        }
+
+        /* Selection info */
+        #sel-bar {
+            background: #1a1830;
+            border-top: 1px solid #2d2b45;
+            padding: 8px;
+            flex-shrink: 0;
+            font-size: 11px;
+            min-height: 72px
+        }
+
+        #sel-bar .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 4px
+        }
+
+        #sel-preview {
+            width: 48px;
+            height: 48px;
+            background: #0a0918;
+            border: 1px solid #2d2b45;
+            border-radius: 3px;
+            image-rendering: pixelated
+        }
+
+        #sel-desc {
+            flex: 1;
+            color: #a0a0b8;
+            line-height: 1.5
+        }
+
+        #sel-key {
+            font-size: 10px;
+            margin-top: 4px;
+            color: #6b6885
+        }
+
+        /* Code modal */
+        #modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .85);
+            z-index: 200;
+            align-items: center;
+            justify-content: center
+        }
+
+        #modal.show {
+            display: flex
+        }
+
+        #modal-box {
+            background: #0f0e1a;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            width: 82vw;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px
+        }
+
+        #modal-box h2 {
+            color: #fbbf24;
+            font-size: 13px;
+            margin-bottom: 8px
+        }
+
+        #code-out {
+            flex: 1;
+            background: #060510;
+            color: #a6e3a1;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-y: auto;
+            white-space: pre;
+            border: 1px solid #2d2b45
+        }
+
+        #modal-box .mfooter {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toolbar">
+        <h1>🏢 Office Decorator v2</h1>
+        <div class="sep"></div>
+        <button onclick="undo()" title="Ctrl+Z">↩ Undo</button>
+        <button onclick="toggleSelect()" id="btn-select">⬚ Select</button>
+        <button onclick="toggleErase()" id="btn-erase">🗑 Erase</button>
+        <button onclick="deleteSelected()" class="danger" id="btn-del-sel" style="display:none">✕ Delete Sel</button>
+        <button onclick="clearAll()" class="danger">✕ Clear All</button>
+        <div class="sep"></div>
+        <button onclick="changeZoom(-0.5)">－</button>
+        <input id="zoom-pct" value="100%" readonly>
+        <button onclick="changeZoom(+0.5)">＋</button>
+        <button onclick="resetView()" title="Fit to window">⊡ Fit</button>
+        <div class="sep"></div>
+        <button onclick="generateCode()" class="ok">⬇ Export Code</button>
+    </div>
+
+    <div id="main">
+        <div id="office-wrap">
+            <canvas id="office-canvas"></canvas>
+            <div id="room-tooltip"></div>
+        </div>
+
+        <div id="right">
+            <div id="sheet-tabs"></div>
+            <div id="sheet-scroll"><canvas id="sheet-canvas"></canvas></div>
+            <div id="sel-bar">
+                <div><strong id="sel-title" style="color:#fbbf24">No sprite selected</strong></div>
+                <div class="row">
+                    <canvas id="sel-preview" width="48" height="48"></canvas>
+                    <div>
+                        <div id="sel-desc">Pick any tile or drag to select a multi-tile region from the sprite sheet
+                            above.</div>
+                        <div id="sel-key"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Code Modal -->
+    <div id="modal">
+        <div id="modal-box">
+            <h2>Generated Code — paste into <code>officeLayout.ts</code></h2>
+            <div id="code-out"></div>
+            <div class="mfooter">
+                <button
+                    onclick="navigator.clipboard.writeText(document.getElementById('code-out').textContent).then(()=>alert('Copied!'))"
+                    class="ok">Copy</button>
+                <button onclick="document.getElementById('modal').classList.remove('show')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════
+        // OFFICE LAYOUT — exact match from officeLayout.ts
+        // Grid: 42 cols × 36 rows
+        // All offices: 12 wide × 10 tall (interior 10×8)
+        // Board Room:  14 wide × 14 tall (interior 12×12)
+        // ═══════════════════════════════════════════════════════
+        const GRID_COLS = 42, GRID_ROWS = 36;
+        const T16 = 16;
+
+        const ROOMS = [
+            // TOP ROW (rows 0-9)
+            { id: 'isaac', name: "Isaac's Office", col: 0, row: 0, w: 12, h: 10, color: 'rgba(80,55,18,0.75)' },
+            { id: 'billy', name: "BILLY's Office", col: 15, row: 0, w: 12, h: 10, color: 'rgba(90,68,18,0.75)' },
+            { id: 'patrik', name: "Patrik's Office", col: 30, row: 0, w: 12, h: 10, color: 'rgba(55,30,95,0.75)' },
+            // MID ROW (rows 12-21)
+            { id: 'marcos', name: "Marcos's Office", col: 0, row: 12, w: 12, h: 10, color: 'rgba(20,45,90,0.75)' },
+            { id: 'war-room', name: "Board Room", col: 14, row: 12, w: 14, h: 14, color: 'rgba(22,45,70,0.75)' },
+            { id: 'sandra', name: "Sandra's Office", col: 30, row: 12, w: 12, h: 10, color: 'rgba(20,70,45,0.75)' },
+            // BOT ROW (rows 24-33)
+            { id: 'charlie', name: "Charlie's Office", col: 0, row: 24, w: 12, h: 10, color: 'rgba(60,30,80,0.75)' },
+            { id: 'wendy', name: "Wendy's Room", col: 30, row: 24, w: 12, h: 10, color: 'rgba(80,20,50,0.75)' },
+        ];
+
+        // Build tile map (0=void, 1=floor, 2=wall, 3=door)
+        // Mirrors buildTileMap() from officeLayout.ts exactly:
+        // - Start ALL FLOOR
+        // - Stamp room walls+interiors
+        // - Place doors
+        const TMAP = buildMap();
+        function buildMap() {
+            // ALL FLOOR to start (no void border)
+            const m = Array.from({ length: GRID_ROWS }, () => new Uint8Array(GRID_COLS).fill(1));
+            const fill = (c, r, w, h, t) => {
+                for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++)
+                    if (y >= 0 && y < GRID_ROWS && x >= 0 && x < GRID_COLS) m[y][x] = t;
+            };
+            const room = (c, r, w, h) => { fill(c, r, w, h, 2); fill(c + 1, r + 1, w - 2, h - 2, 1) };
+
+            // TOP ROW (rows 0-9)
+            room(0, 0, 12, 10);   // Isaac
+            room(15, 0, 12, 10);  // Billy
+            room(30, 0, 12, 10);  // Patrik
+
+            // MID ROW (rows 12-21)
+            room(0, 12, 12, 10);  // Marcos
+            room(30, 12, 12, 10); // Sandra
+
+            // BOARD ROOM (rows 12-25, 14×14)
+            room(14, 12, 14, 14);
+
+            // BOT ROW (rows 24-33)
+            room(0, 24, 12, 10);  // Charlie
+            room(30, 24, 12, 10); // Wendy
+
+            // DOORS — top row south → corridor rows 10-11
+            m[9][5] = 3; m[9][6] = 3;    // Isaac
+            m[9][20] = 3; m[9][21] = 3;  // Billy
+            m[9][35] = 3; m[9][36] = 3;  // Patrik
+
+            // Mid row east/west → vertical corridors cols 12-13 / 28-29
+            m[16][11] = 3; m[17][11] = 3; // Marcos east
+            m[16][30] = 3; m[17][30] = 3; // Sandra west
+
+            // Board Room north (4 wide) → corridor row 11
+            m[12][19] = 3; m[12][20] = 3; m[12][21] = 3; m[12][22] = 3;
+
+            // Bot row east/west
+            m[28][11] = 3; m[29][11] = 3; // Charlie east
+            m[28][30] = 3; m[29][30] = 3; // Wendy west
+
+            return m;
+        }
+        function getRoomAt(c, r) {
+            return ROOMS.find(x => c >= x.col && c < x.col + x.w && r >= x.row && r < x.row + x.h) || null;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // SPRITE SHEETS
+        // ═══════════════════════════════════════════════════════
+        const SHEETS = {
+            'generic': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png', ts: 16 },
+            'living-room': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png', ts: 16 },
+            'bedroom': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/3_Bedroom_16x16.png', ts: 16 },
+            'kitchen': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/4_Kitchen_16x16.png', ts: 16 },
+            'classroom': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png', ts: 16 },
+            'conference': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/13_Conference_Hall_16x16.png', ts: 16 },
+            'film-studio': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/23_Television_and_Film_Studio.png', ts: 16 },
+            'floors': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png', ts: 16 },
+            'walls': { path: '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png', ts: 16 },
+            'ui': { path: '/sprites/modern-interiors-paid/4_User_Interface_Elements/UI_16x16.png', ts: 16 },
+        };
+
+        // Known atlas key reverse lookup: "sheetId:col:row" -> atlasKey
+        const KNOWN_ATLAS = {
+            'generic:8:5': 'desk-wood-2wide', 'generic:10:5': 'desk-wood-3wide',
+            'generic:5:7': 'chair-office', 'generic:7:0': 'monitor',
+            'generic:8:8': 'bookshelf-2tall', 'generic:14:9': 'plant-potted',
+            'generic:15:6': 'water-cooler', 'generic:2:0': 'filing-cabinet',
+            'generic:8:0': 'desk-lamp', 'generic:9:0': 'keyboard', 'generic:10:0': 'phone-desk',
+            'generic:10:1': 'coffee-mug', 'generic:11:1': 'pen-holder',
+            'generic:12:3': 'photo-frame', 'generic:13:1': 'papers', 'generic:15:0': 'candle',
+            'conference:0:2': 'conf-table', 'conference:0:5': 'conf-chair',
+            'conference:10:0': 'conf-whiteboard',
+            'living-room:2:0': 'couch-2wide', 'living-room:5:0': 'armchair',
+            'living-room:2:4': 'coffee-table', 'living-room:10:0': 'plant-large',
+            'living-room:7:7': 'cushion', 'living-room:9:4': 'floor-lamp',
+            'film-studio:0:0': 'camera', 'film-studio:4:0': 'clapboard',
+            'film-studio:8:3': 'film-reel', 'film-studio:8:4': 'director-chair',
+            'film-studio:2:0': 'studio-light',
+            'classroom:0:10': 'bookshelf-library', 'classroom:4:2': 'chalkboard',
+        };
+
+        const ITEM_TYPE = {
+            'desk-wood-2wide': 'desk', 'desk-wood-3wide': 'desk',
+            'chair-office': 'chair', 'conf-chair': 'chair', 'armchair': 'chair', 'director-chair': 'chair',
+            'conf-table': 'table', 'coffee-table': 'table',
+            'bookshelf-2tall': 'bookshelf', 'bookshelf-library': 'bookshelf',
+            'plant-potted': 'plant', 'plant-large': 'plant',
+            'water-cooler': 'water-cooler', 'conf-whiteboard': 'whiteboard',
+            'whiteboard': 'whiteboard', 'chalkboard': 'whiteboard',
+            'couch-2wide': 'couch', 'monitor': 'monitor',
+            'filing-cabinet': 'filing-cabinet', 'camera': 'artwork',
+            'film-reel': 'artwork', 'clapboard': 'artwork', 'studio-light': 'artwork',
+        };
+
+        // ═══════════════════════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════════════════════
+        const images = {};
+        let curSheet = 'generic';
+        const placed = [];           // [{id,sheetId,sc,sr,sw,sh,oc,or,roomId}]
+        const history = [];          // snapshots for undo
+        let idCtr = 0;
+        let eraseMode = false;
+        let selectMode = false;          // group-select tool is active
+        let selectedIds = new Set();     // ids of selected placed items
+        let selRect = null;              // {c0,r0,c1,r1} rubber-band rect during drag
+        let selRectDragging = false;
+        let groupDragSnap = null;        // {startC,startR, origPositions:[{id,oc,or}]}
+        let selSprite = null;            // {sheetId,sc,sr,sw,sh}
+        let selItemId = null;
+        let draggingItem = null;         // single-item drag
+
+        // Office canvas viewport
+        let offZoom = 2;             // px per tile (base 16 -> at offZoom this becomes offZoom*16 / TILE world units)
+        let TILE = 20;               // px per tile on office canvas (changes with zoom)
+        let panX = 0, panY = 0;        // canvas translation in px
+        let isPanning = false, panStartX = 0, panStartY = 0, panStartPanX = 0, panStartPanY = 0;
+
+        // Sheet canvas state
+        const SHEET_SCALE = 2;       // show sheets at 2×
+        let sheetSelStart = null, sheetSelEnd = null, sheetSelFinal = null;
+        let sheetMouseDown = false;
+
+        // ═══════════════════════════════════════════════════════
+        // CANVAS SETUP
+        // ═══════════════════════════════════════════════════════
+        const offCanv = document.getElementById('office-canvas');
+        const offCtx = offCanv.getContext('2d');
+        const shCanv = document.getElementById('sheet-canvas');
+        const shCtx = shCanv.getContext('2d');
+
+        function resizeOffice() {
+            const wrap = document.getElementById('office-wrap');
+            offCanv.style.width = offCanv.width + 'px';
+            offCanv.style.height = offCanv.height + 'px';
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // IMAGE LOADING
+        // ═══════════════════════════════════════════════════════
+        let loadDone = 0;
+        const loadTotal = Object.keys(SHEETS).length;
+        function loadAll() {
+            for (const [id, s] of Object.entries(SHEETS)) {
+                const img = new Image();
+                img.onload = () => { images[id] = img; loadDone++; renderSheet(); renderOffice() };
+                img.onerror = () => { loadDone++ };
+                img.src = s.path;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // SHEET TABS
+        // ═══════════════════════════════════════════════════════
+        function buildTabs() {
+            const el = document.getElementById('sheet-tabs');
+            el.innerHTML = Object.keys(SHEETS).map(id =>
+                `<button class="stab${id === curSheet ? ' active' : ''}" onclick="switchSheet('${id}')">${id}</button>`
+            ).join('');
+        }
+        function switchSheet(id) { curSheet = id; buildTabs(); renderSheet() }
+
+        // ═══════════════════════════════════════════════════════
+        // SHEET CANVAS RENDER
+        // ═══════════════════════════════════════════════════════
+        function renderSheet() {
+            const img = images[curSheet];
+            const sinfo = SHEETS[curSheet];
+            if (!img) { shCanv.width = 200; shCanv.height = 40; shCtx.fillStyle = '#1a1932'; shCtx.fillRect(0, 0, 200, 40); shCtx.fillStyle = '#666'; shCtx.font = '11px monospace'; shCtx.fillText('Loading…', 8, 24); return }
+            const ts = sinfo.ts;
+            const sc = SHEET_SCALE;
+            shCanv.width = img.width * sc;
+            shCanv.height = img.height * sc;
+            shCtx.imageSmoothingEnabled = false;
+            // dark bg
+            shCtx.fillStyle = '#10102a';
+            shCtx.fillRect(0, 0, shCanv.width, shCanv.height);
+            // draw full sheet
+            shCtx.drawImage(img, 0, 0, img.width * sc, img.height * sc);
+            // grid lines
+            const cols = Math.floor(img.width / ts), rows = Math.floor(img.height / ts);
+            shCtx.strokeStyle = 'rgba(255,255,255,0.1)'; shCtx.lineWidth = 0.5;
+            for (let c = 0; c <= cols; c++) { shCtx.beginPath(); shCtx.moveTo(c * ts * sc, 0); shCtx.lineTo(c * ts * sc, shCanv.height); shCtx.stroke() }
+            for (let r = 0; r <= rows; r++) { shCtx.beginPath(); shCtx.moveTo(0, r * ts * sc); shCtx.lineTo(shCanv.width, r * ts * sc); shCtx.stroke() }
+            // selection highlight
+            if (sheetSelFinal && sheetSelFinal.sheetId === curSheet) {
+                const { sc: fsc, sr, sw, sh } = sheetSelFinal;
+                shCtx.strokeStyle = '#fbbf24'; shCtx.lineWidth = 2;
+                shCtx.strokeRect(fsc * ts * sc + 1, sr * ts * sc + 1, sw * ts * sc - 2, sh * ts * sc - 2);
+                shCtx.fillStyle = 'rgba(251,191,36,0.15)';
+                shCtx.fillRect(fsc * ts * sc, sr * ts * sc, sw * ts * sc, sh * ts * sc);
+            }
+            if (sheetSelStart && sheetSelEnd && sheetSelFinal?.sheetId !== curSheet || sheetMouseDown) {
+                const { sc: selStart } = normSel(sheetSelStart, sheetSelEnd) || {};
+                if (sheetSelStart && sheetSelEnd) {
+                    const n = normSel(sheetSelStart, sheetSelEnd);
+                    shCtx.strokeStyle = '#fbbf24'; shCtx.lineWidth = 2; shCtx.setLineDash([4, 2]);
+                    shCtx.strokeRect(n.c * ts * sc + 1, n.r * ts * sc + 1, n.w * ts * sc - 2, n.h * ts * sc - 2);
+                    shCtx.setLineDash([]);
+                }
+            }
+        }
+
+        function normSel(a, b) {
+            if (!a || !b) return null;
+            const c = Math.min(a.c, b.c), r = Math.min(a.r, b.r);
+            const w = Math.abs(a.c - b.c) + 1, h = Math.abs(a.r - b.r) + 1;
+            return { c, r, w, h };
+        }
+
+        // Sheet mouse events
+        shCanv.addEventListener('mousedown', e => {
+            const { c, r } = sheetCoord(e);
+            sheetSelStart = { c, r }; sheetSelEnd = { c, r }; sheetMouseDown = true;
+            renderSheet();
+        });
+        shCanv.addEventListener('mousemove', e => {
+            if (!sheetMouseDown) return;
+            sheetSelEnd = sheetCoord(e);
+            renderSheet();
+        });
+        window.addEventListener('mouseup', e => {
+            if (!sheetMouseDown) return;
+            sheetMouseDown = false;
+            const n = normSel(sheetSelStart, sheetSelEnd);
+            if (n) {
+                sheetSelFinal = { sheetId: curSheet, sc: n.c, sr: n.r, sw: n.w, sh: n.h };
+                selSprite = sheetSelFinal;
+                updateSelBar();
+            }
+            sheetSelStart = null; sheetSelEnd = null;
+            renderSheet();
+        });
+
+        function sheetCoord(e) {
+            const rect = shCanv.getBoundingClientRect();
+            const ts = SHEETS[curSheet]?.ts || 16;
+            const sc = SHEET_SCALE;
+            const px = (e.clientX - rect.left) * (shCanv.width / rect.width);
+            const py = (e.clientY - rect.top) * (shCanv.height / rect.height);
+            return { c: Math.floor(px / (ts * sc)), r: Math.floor(py / (ts * sc)) };
+        }
+
+        function updateSelBar() {
+            if (!selSprite) {
+                document.getElementById('sel-title').textContent = 'No sprite selected';
+                document.getElementById('sel-desc').textContent = 'Pick a tile on the sheet above.';
+                document.getElementById('sel-key').textContent = '';
+                return;
+            }
+            const { sheetId, sc, sr, sw, sh } = selSprite;
+            const lookupKey = `${sheetId}:${sc}:${sr}`;
+            const atlasKey = KNOWN_ATLAS[lookupKey] || null;
+            document.getElementById('sel-title').textContent = atlasKey || `${sheetId} (${sc},${sr}) ${sw}×${sh}`;
+            document.getElementById('sel-desc').textContent = `Sheet: ${sheetId} · Tile: (${sc},${sr}) · Size: ${sw}×${sh}`;
+            document.getElementById('sel-key').textContent = atlasKey ? `atlasKey: '${atlasKey}'` : `sf('${sheetId}',${sc},${sr}${sw > 1 || sh > 1 ? ',' + sw + ',' + sh : ''})`;
+            // preview
+            const pc = document.getElementById('sel-preview').getContext('2d');
+            pc.fillStyle = '#0a0918'; pc.fillRect(0, 0, 48, 48);
+            const img = images[sheetId];
+            if (img) {
+                const ts = SHEETS[sheetId]?.ts || 16;
+                pc.imageSmoothingEnabled = false;
+                const scale = Math.min(46 / (sw * ts), 46 / (sh * ts));
+                const dw = sw * ts * scale, dh = sh * ts * scale;
+                pc.drawImage(img, sc * ts, sr * ts, sw * ts, sh * ts, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // PLACEMENT HELPERS (module scope)
+        // ═══════════════════════════════════════════════════════
+        function isFloor(c, r) { return c >= 0 && c < GRID_COLS && r >= 0 && r < GRID_ROWS && (TMAP[r][c] === 1 || TMAP[r][c] === 3) }
+        function canPlace(c, r, sw, sh) { for (let dr = 0; dr < sh; dr++)for (let dc = 0; dc < sw; dc++)if (!isFloor(c + dc, r + dr)) return false; return true }
+
+        // ═══════════════════════════════════════════════════════
+        // OFFICE CANVAS RENDER
+        // ═══════════════════════════════════════════════════════
+        let hoverOC = -1, hoverOR = -1;
+
+        function renderOffice() {
+            const wrap = document.getElementById('office-wrap');
+            const W = wrap.clientWidth, H = wrap.clientHeight;
+            offCanv.width = W; offCanv.height = H;
+            const ctx2 = offCtx;
+            // background
+            ctx2.fillStyle = '#0a0918'; ctx2.fillRect(0, 0, W, H);
+            ctx2.save();
+            ctx2.translate(panX, panY);
+
+            const T = TILE;
+            const rows = GRID_ROWS, cols = GRID_COLS;
+
+            // Floor and wall tiles
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const t = TMAP[r][c];
+                    const x = c * T, y = r * T;
+                    if (t === 0) continue;
+                    if (t === 2) { ctx2.fillStyle = '#d6cec4'; ctx2.fillRect(x, y, T, T) }
+                    else if (t === 3) { ctx2.fillStyle = '#b8a898'; ctx2.fillRect(x, y, T, T) }
+                    else {
+                        const rm = getRoomAt(c, r);
+                        ctx2.fillStyle = rm ? rm.color : '#1c1a30';
+                        ctx2.fillRect(x, y, T, T);
+                    }
+                }
+            }
+
+            // Wall face stripes + shadow
+            for (let r = 0; r < rows; r++)for (let c = 0; c < cols; c++) {
+                if (TMAP[r][c] === 2 && r + 1 < rows && TMAP[r + 1][c] >= 1) {
+                    ctx2.fillStyle = '#a89f94'; ctx2.fillRect(c * T, r * T + T - 4, T, 4);
+                    ctx2.fillStyle = 'rgba(0,0,0,0.13)'; ctx2.fillRect(c * T, (r + 1) * T, T, 3);
+                }
+            }
+
+            // Grid lines + placeable floor dots
+            for (let r = 0; r < rows; r++)for (let c = 0; c < cols; c++) {
+                const tv = TMAP[r][c];
+                if (tv < 1) continue;
+                if (tv === 1 || tv === 3) {
+                    ctx2.strokeStyle = 'rgba(255,255,255,0.09)'; ctx2.lineWidth = 0.5;
+                    ctx2.strokeRect(c * T + .5, r * T + .5, T - 1, T - 1);
+                    if (T >= 10) { ctx2.fillStyle = 'rgba(255,255,255,0.13)'; const ds = Math.max(1, T * 0.13); ctx2.fillRect(c * T + T / 2 - ds / 2, r * T + T / 2 - ds / 2, ds, ds) }
+                } else {
+                    ctx2.strokeStyle = 'rgba(255,255,255,0.04)'; ctx2.lineWidth = 0.5;
+                    ctx2.strokeRect(c * T + .5, r * T + .5, T - 1, T - 1);
+                }
+            }
+
+            // Room labels
+            if (T >= 12) {
+                ctx2.font = `bold ${Math.max(7, T * 0.4)}px monospace`;
+                ctx2.textAlign = 'center'; ctx2.textBaseline = 'top';
+                for (const rm of ROOMS) {
+                    ctx2.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx2.fillText(rm.name, (rm.col + rm.w / 2) * T, rm.row * T + T * 0.1);
+                }
+            }
+
+            // Placed items — with group-select highlight
+            ctx2.imageSmoothingEnabled = false;
+            let grpMinC = Infinity, grpMinR = Infinity, grpMaxC = -Infinity, grpMaxR = -Infinity;
+            for (const item of placed) {
+                const { sheetId, sc, sr, sw, sh, oc, or: orr, id } = item;
+                const ts = SHEETS[sheetId]?.ts || 16;
+                const img = images[sheetId];
+                const x = oc * T, y = orr * T, dw = sw * T, dh = sh * T;
+                if (img) { ctx2.drawImage(img, sc * ts, sr * ts, sw * ts, sh * ts, x, y, dw, dh) }
+                else { ctx2.fillStyle = 'rgba(251,191,36,0.3)'; ctx2.fillRect(x, y, dw, dh) }
+                if (selectedIds.has(id)) {
+                    // cyan selection highlight
+                    ctx2.fillStyle = 'rgba(6,182,212,0.25)'; ctx2.fillRect(x, y, dw, dh);
+                    ctx2.strokeStyle = '#06b6d4'; ctx2.lineWidth = 2;
+                    ctx2.strokeRect(x + 1, y + 1, dw - 2, dh - 2);
+                    grpMinC = Math.min(grpMinC, oc); grpMinR = Math.min(grpMinR, orr);
+                    grpMaxC = Math.max(grpMaxC, oc + sw); grpMaxR = Math.max(grpMaxR, orr + sh);
+                } else if (id === selItemId) {
+                    ctx2.strokeStyle = '#fbbf24'; ctx2.lineWidth = 2;
+                    ctx2.strokeRect(x + 1, y + 1, dw - 2, dh - 2);
+                }
+            }
+            // Group bounding box
+            if (selectedIds.size > 0 && grpMinC < Infinity) {
+                ctx2.strokeStyle = '#06b6d4'; ctx2.lineWidth = 1.5; ctx2.setLineDash([5, 3]);
+                ctx2.strokeRect(grpMinC * T - 2, grpMinR * T - 2, (grpMaxC - grpMinC) * T + 4, (grpMaxR - grpMinR) * T + 4);
+                ctx2.setLineDash([]);
+                // badge
+                ctx2.fillStyle = '#06b6d4'; ctx2.fillRect(grpMinC * T - 2, grpMinR * T - 14, 48, 14);
+                ctx2.fillStyle = '#000'; ctx2.font = `bold 9px monospace`; ctx2.textAlign = 'left'; ctx2.textBaseline = 'top';
+                ctx2.fillText(`${selectedIds.size} selected`, grpMinC * T + 1, grpMinR * T - 13);
+            }
+            // Rubber-band selection rect
+            if (selRect) {
+                const { c0, r0, c1, r1 } = selRect;
+                const rx = Math.min(c0, c1) * T, ry = Math.min(r0, r1) * T;
+                const rw = (Math.abs(c1 - c0) + 1) * T, rh = (Math.abs(r1 - r0) + 1) * T;
+                ctx2.fillStyle = 'rgba(6,182,212,0.10)'; ctx2.fillRect(rx, ry, rw, rh);
+                ctx2.strokeStyle = '#06b6d4'; ctx2.lineWidth = 1; ctx2.setLineDash([4, 3]);
+                ctx2.strokeRect(rx, ry, rw, rh); ctx2.setLineDash([]);
+            }
+
+            // Hover ghost — green=valid, red=invalid
+            if (selSprite && hoverOC >= 0 && !eraseMode && !draggingItem) {
+                const { sheetId, sc, sr, sw, sh } = selSprite;
+                const ts = SHEETS[sheetId]?.ts || 16;
+                const img = images[sheetId];
+                const x = hoverOC * T, y = hoverOR * T, dw = sw * T, dh = sh * T;
+                const valid = canPlace(hoverOC, hoverOR, sw, sh);
+                ctx2.globalAlpha = 0.55;
+                if (img) ctx2.drawImage(img, sc * ts, sr * ts, sw * ts, sh * ts, x, y, dw, dh);
+                else { ctx2.fillStyle = valid ? '#10b981' : '#ef4444'; ctx2.fillRect(x, y, dw, dh) }
+                ctx2.globalAlpha = 1;
+                // tint overlay: green wash for valid, red wash for invalid
+                ctx2.fillStyle = valid ? 'rgba(16,185,129,0.20)' : 'rgba(239,68,68,0.35)';
+                ctx2.fillRect(x, y, dw, dh);
+                ctx2.strokeStyle = valid ? '#10b981' : '#ef4444';
+                ctx2.lineWidth = valid ? 1.5 : 2;
+                ctx2.strokeRect(x + 1, y + 1, dw - 2, dh - 2);
+                // show X marks on invalid cells
+                if (!valid) {
+                    ctx2.strokeStyle = 'rgba(239,68,68,0.6)'; ctx2.lineWidth = 1;
+                    for (let dr = 0; dr < sh; dr++)for (let dc = 0; dc < sw; dc++) {
+                        if (!isFloor(hoverOC + dc, hoverOR + dr)) {
+                            const cx = (hoverOC + dc) * T + T / 2, cy = (hoverOR + dr) * T + T / 2, s = T * 0.25;
+                            ctx2.beginPath(); ctx2.moveTo(cx - s, cy - s); ctx2.lineTo(cx + s, cy + s);
+                            ctx2.moveTo(cx + s, cy - s); ctx2.lineTo(cx - s, cy + s); ctx2.stroke();
+                        }
+                    }
+                }
+            }
+
+            ctx2.restore();
+        }
+
+        // Office coord from mouse event
+        function offCoord(e) {
+            const rect = offCanv.getBoundingClientRect();
+            const px = (e.clientX - rect.left) - panX;
+            const py = (e.clientY - rect.top) - panY;
+            return { c: Math.floor(px / TILE), r: Math.floor(py / TILE) };
+        }
+
+        // ─── office mouse events ───
+        offCanv.addEventListener('mousemove', e => {
+            if (isPanning) { panX = panStartPanX + (e.clientX - panStartX); panY = panStartPanY + (e.clientY - panStartY); renderOffice(); return }
+            const { c, r } = offCoord(e);
+            hoverOC = c; hoverOR = r;
+
+            // GROUP DRAG — move all selected items by same delta
+            if (groupDragSnap) {
+                const dc = c - groupDragSnap.startC, dr = r - groupDragSnap.startR;
+                for (const orig of groupDragSnap.origPositions) {
+                    const it = placed.find(p => p.id === orig.id); if (!it) continue;
+                    it.oc = orig.oc + dc; it.or = orig.or + dr;
+                    updateItemRoom(it);
+                }
+                renderOffice(); return;
+            }
+
+            // RUBBER BAND update
+            if (selRectDragging && selRect) { selRect.c1 = c; selRect.r1 = r; renderOffice(); return; }
+
+            if (draggingItem) { draggingItem.oc = Math.max(0, c); draggingItem.or = Math.max(0, r); updateItemRoom(draggingItem) }
+            const rm = getRoomAt(c, r);
+            const t = (c >= 0 && c < GRID_COLS && r >= 0 && r < GRID_ROWS) ? TMAP[r][c] : 0;
+            const tname = t === 2 ? 'wall' : t === 3 ? 'door' : t === 1 ? 'floor' : 'void';
+            document.getElementById('room-tooltip').textContent =
+                rm ? `${rm.name} — tile (${c},${r}) [${tname}]` : `hallway — tile (${c},${r}) [${tname}]`;
+            if (selSprite && !eraseMode && !selectMode) {
+                const { sw, sh } = selSprite;
+                offCanv.style.cursor = canPlace(c, r, sw, sh) ? 'crosshair' : 'not-allowed';
+            }
+            renderOffice();
+        });
+        offCanv.addEventListener('mouseleave', () => { hoverOC = -1; hoverOR = -1; renderOffice() });
+
+        offCanv.addEventListener('mousedown', e => {
+            if (e.button === 1 || (e.button === 0 && e.altKey)) { e.preventDefault(); isPanning = true; panStartX = e.clientX; panStartY = e.clientY; panStartPanX = panX; panStartPanY = panY; return }
+            const { c, r } = offCoord(e);
+
+            // ── SELECT MODE ──
+            if (selectMode) {
+                // Clicking on a selected item → start group drag
+                const hit = [...placed].reverse().find(it => c >= it.oc && c < it.oc + it.sw && r >= it.or && r < it.or + it.sh);
+                if (hit && selectedIds.has(hit.id)) {
+                    snapshot();
+                    groupDragSnap = {
+                        startC: c, startR: r,
+                        origPositions: placed.filter(p => selectedIds.has(p.id)).map(p => ({ id: p.id, oc: p.oc, or: p.or }))
+                    };
+                    return;
+                }
+                // Clicking empty or unselected → start rubber-band (Shift adds to selection)
+                if (!e.shiftKey) selectedIds.clear();
+                selRect = { c0: c, r0: r, c1: c, r1: r }; selRectDragging = true;
+                updateSelDelBtn();
+                renderOffice(); return;
+            }
+
+            // ── ERASE MODE ──
+            if (eraseMode) {
+                for (let i = placed.length - 1; i >= 0; i--) {
+                    const it = placed[i];
+                    if (c >= it.oc && c < it.oc + it.sw && r >= it.or && r < it.or + it.sh) {
+                        snapshot(); placed.splice(i, 1); selItemId = null; renderOffice(); return;
+                    }
+                }
+                return;
+            }
+            // Try to grab existing item (single-drag)
+            for (let i = placed.length - 1; i >= 0; i--) {
+                const it = placed[i];
+                if (c >= it.oc && c < it.oc + it.sw && r >= it.or && r < it.or + it.sh) {
+                    selItemId = it.id; draggingItem = it; snapshot(); renderOffice(); return;
+                }
+            }
+            // Place new (only on valid floor tiles)
+            if (selSprite) {
+                const { sheetId, sc, sr, sw, sh } = selSprite;
+                if (!canPlace(c, r, sw, sh)) return;
+                snapshot();
+                const rm = getRoomAt(c, r);
+                const item = { id: ++idCtr, sheetId, sc, sr, sw, sh, oc: c, or: r, roomId: rm?.id || 'hallway' };
+                placed.push(item); selItemId = item.id; renderOffice();
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (isPanning) { isPanning = false; return }
+            // Finalize rubber-band selection
+            if (selRectDragging && selRect) {
+                selRectDragging = false;
+                const minC = Math.min(selRect.c0, selRect.c1), maxC = Math.max(selRect.c0, selRect.c1);
+                const minR = Math.min(selRect.r0, selRect.r1), maxR = Math.max(selRect.r0, selRect.r1);
+                for (const it of placed) {
+                    // include if item overlaps selection rect
+                    if (it.oc <= maxC && it.oc + it.sw - 1 >= minC && it.or <= maxR && it.or + it.sh - 1 >= minR)
+                        selectedIds.add(it.id);
+                }
+                selRect = null; updateSelDelBtn(); renderOffice(); return;
+            }
+            if (groupDragSnap) { groupDragSnap = null; renderOffice(); return; }
+            draggingItem = null;
+        });
+
+        // Escape clears selection; Ctrl+Z handled in undo section
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { selectedIds.clear(); selRect = null; groupDragSnap = null; updateSelDelBtn(); renderOffice(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+        });
+
+        offCanv.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.25 : 0.25;
+            const newT = Math.max(8, Math.min(64, TILE + delta * TILE * 0.5));
+            // Zoom toward cursor
+            const rect = offCanv.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const worldX = (mx - panX), worldY = (my - panY);
+            const scale = newT / TILE;
+            panX = mx - worldX * scale; panY = my - worldY * scale;
+            TILE = newT;
+            document.getElementById('zoom-pct').value = Math.round(TILE / 20 * 100) + '%';
+            renderOffice();
+        }, { passive: false });
+
+        function updateItemRoom(it) { const rm = getRoomAt(it.oc, it.or); it.roomId = rm?.id || 'hallway' }
+        function updateSelDelBtn() {
+            const btn = document.getElementById('btn-del-sel');
+            btn.style.display = selectedIds.size > 0 ? '' : 'none';
+            btn.textContent = `✕ Delete (${selectedIds.size})`;
+        }
+        function toggleSelect() {
+            selectMode = !selectMode;
+            eraseMode = false;
+            if (!selectMode) { selectedIds.clear(); selRect = null; groupDragSnap = null; }
+            document.getElementById('btn-select').classList.toggle('active', selectMode);
+            document.getElementById('btn-erase').classList.remove('active');
+            offCanv.style.cursor = selectMode ? 'default' : 'crosshair';
+            updateSelDelBtn(); renderOffice();
+        }
+        function deleteSelected() {
+            if (!selectedIds.size) return;
+            snapshot();
+            for (const id of selectedIds) { const i = placed.findIndex(p => p.id === id); if (i >= 0) placed.splice(i, 1); }
+            selectedIds.clear(); updateSelDelBtn(); renderOffice();
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // ZOOM / PAN CONTROLS
+        // ═══════════════════════════════════════════════════════
+        function changeZoom(d) {
+            TILE = Math.max(8, Math.min(64, TILE + d * TILE * 0.3));
+            document.getElementById('zoom-pct').value = Math.round(TILE / 20 * 100) + '%';
+            renderOffice();
+        }
+        function resetView() {
+            const wrap = document.getElementById('office-wrap');
+            const W = wrap.clientWidth, H = wrap.clientHeight;
+            const fitT = Math.min(Math.floor(W / GRID_COLS), Math.floor(H / GRID_ROWS));
+            TILE = Math.max(8, Math.min(64, fitT));
+            panX = (W - GRID_COLS * TILE) / 2; panY = (H - GRID_ROWS * TILE) / 2;
+            document.getElementById('zoom-pct').value = Math.round(TILE / 20 * 100) + '%';
+            renderOffice();
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // UNDO
+        // ═══════════════════════════════════════════════════════
+        function snapshot() { history.push(JSON.stringify(placed)); if (history.length > 80) history.shift() }
+        function undo() {
+            if (!history.length) return;
+            const prev = JSON.parse(history.pop());
+            placed.length = 0; placed.push(...prev);
+            selItemId = null; renderOffice();
+        }
+        // (keydown for undo merged into the Escape listener above)
+
+
+        // ═══════════════════════════════════════════════════════
+        // ERASE / CLEAR
+        // ═══════════════════════════════════════════════════════
+        function toggleErase() {
+            eraseMode = !eraseMode;
+            document.getElementById('btn-erase').classList.toggle('active', eraseMode);
+            if (eraseMode) selSprite = null;
+            offCanv.style.cursor = eraseMode ? 'not-allowed' : 'crosshair';
+        }
+        function clearAll() {
+            if (!placed.length || confirm('Clear all items?')) { snapshot(); placed.length = 0; selItemId = null; renderOffice() }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // CODE EXPORT
+        // ═══════════════════════════════════════════════════════
+        function generateCode() {
+            if (!placed.length) { alert('Nothing placed yet.'); return }
+            const customAtlas = {};
+            const lines = [];
+            // group by roomId
+            const byRoom = {};
+            for (const it of placed) {
+                (byRoom[it.roomId] ||= []).push(it);
+            }
+            for (const [roomId, items] of Object.entries(byRoom)) {
+                const rm = ROOMS.find(x => x.id === roomId);
+                lines.push(`\n  // ${rm?.name || roomId}`);
+                for (const it of items) {
+                    const { sheetId, sc, sr, sw, sh, oc, or: orr } = it;
+                    const lk = `${sheetId}:${sc}:${sr}`;
+                    let atlasKey = KNOWN_ATLAS[lk];
+                    if (!atlasKey) {
+                        // generate a custom key
+                        atlasKey = `${sheetId}-${sc}-${sr}${sw > 1 || sh > 1 ? '-' + sw + 'x' + sh : ''}`;
+                        if (!customAtlas[atlasKey]) {
+                            const szArgs = sw > 1 || sh > 1 ? `,${sw},${sh}` : '';
+                            customAtlas[atlasKey] = `  '${atlasKey}': sf('${sheetId}', ${sc}, ${sr}${szArgs}),`;
+                        }
+                    }
+                    const type = ITEM_TYPE[atlasKey] || 'prop';
+                    const rh = sh > 1 ? `, renderHeight: ${sh}` : '';
+                    lines.push(`  { roomId: '${roomId}', type: '${type}', col: ${oc}, row: ${orr}, width: ${sw}, height: ${sh}${rh}, atlasKey: '${atlasKey}' },`);
+                }
+            }
+
+            let out = 'export const FURNITURE: FurnitureItem[] = [';
+            out += lines.join('\n') + '\n];\n';
+
+            if (Object.keys(customAtlas).length) {
+                out += '\n// ── Add these to LIMEZU_ATLAS in limeZuAtlas.ts ──────────────────\n';
+                out += Object.values(customAtlas).join('\n') + '\n';
+            }
+
+            document.getElementById('code-out').textContent = out;
+            document.getElementById('modal').classList.add('show');
+        }
+        document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('show') });
+
+        // ═══════════════════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════════════════
+        buildTabs();
+        renderSheet();
+        window.addEventListener('resize', () => { renderOffice() });
+        loadAll();
+        // Start with a nice fit view
+        setTimeout(resetView, 50);
+    </script>
+</body>
+
+</html>

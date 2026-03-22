@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>LimeZu Sprite Sheet Viewer</title>
+  <style>
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: monospace;
+      margin: 20px;
+    }
+
+    h2 {
+      color: #fbbf24;
+    }
+
+    .sheet-container {
+      margin-bottom: 40px;
+    }
+
+    .grid {
+      display: inline-block;
+      border: 1px solid #333;
+    }
+
+    .tile-row {
+      display: flex;
+    }
+
+    .tile-cell {
+      position: relative;
+      border: 1px s11olid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+    }
+
+    .tile-cell:hover {
+      outline: 2px solid #fbbf24;
+      z-index: 10;
+    }
+
+    .tile-cell .label {
+      display: none;
+      position: absolute;
+      top: -20px;
+      left: 0;
+      background: rgba(0, 0, 0, 0.9);
+      color: #fbbf24;
+      padding: 2px 4px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 20;
+    }
+
+    .tile-cell:hover .label {
+      display: block;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    #info {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 10px;
+      border: 1px solid #fbbf24;
+      max-width: 300px;
+    }
+
+    .controls {
+      margin: 10px 0;
+    }
+
+    .controls button {
+      background: #333;
+      color: #eee;
+      border: 1px solid #666;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin: 2px;
+    }
+
+    .controls button:hover {
+      background: #555;
+    }
+
+    .controls button.active {
+      background: #fbbf24;
+      color: #000;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>LimeZu Sprite Sheet Viewer</h1>
+  <p>Hover over tiles to see coordinates. Click to copy <code>sf('sheetId', col, row)</code> to clipboard.</p>
+  <div id="info">
+    <strong>Selected:</strong>
+    <div id="selected">None</div>
+  </div>
+
+  <div class="controls">
+    <strong>Scale:</strong>
+    <button onclick="setScale(2)">2x</button>
+    <button onclick="setScale(3)" class="active">3x</button>
+    <button onclick="setScale(4)">4x</button>
+    <button onclick="setScale(6)">6x</button>
+  </div>
+
+  <div class="controls">
+    <strong>Show:</strong>
+    <button onclick="showSheet('floors')">Floors</button>
+    <button onclick="showSheet('walls')">Walls</button>
+    <button onclick="showSheet('3d-walls')">3D Walls</button>
+    <button onclick="showSheet('generic')">Generic</button>
+    <button onclick="showSheet('conference')">Conference</button>
+    <button onclick="showSheet('living-room')">Living Room</button>
+    <button onclick="showSheet('classroom')">Classroom</button>
+    <button onclick="showSheet('film-studio')">Film Studio</button>
+    <button onclick="showSheet('ui')">UI</button>
+    <button onclick="showSheet('ui-emotes')">UI Emotes</button>
+    <button onclick="showSheet('shadows')">Floor Shadows</button>
+    <button onclick="showSheet('char')">Character #03</button>
+  </div>
+
+  <div id="sheets"></div>
+
+  <script>
+    const SHEETS = {
+      'floors': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png',
+      'walls': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png',
+      '3d-walls': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_3d_walls_16x16.png',
+      'generic': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png',
+      'conference': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/13_Conference_Hall_16x16.png',
+      'living-room': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png',
+      'classroom': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png',
+      'film-studio': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/23_Television_and_Film_Studio.png',
+      'ui': '/sprites/modern-interiors-paid/4_User_Interface_Elements/UI_16x16.png',
+      'ui-emotes': '/sprites/modern-interiors-paid/4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png',
+      'shadows': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floor_Shadows_16x16.png',
+      'char': '/sprites/modern-interiors-paid/2_Characters/Character_Generator/0_Premade_Characters/32x32/Premade_Character_32x32_03.png',
+    };
+
+    let scale = 3;
+    let loadedImages = {};
+
+    function setScale(s) {
+      scale = s;
+      document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      // Re-render current sheet
+      const current = document.querySelector('.sheet-container');
+      if (current) {
+        const id = current.dataset.sheetId;
+        if (id) showSheet(id);
+      }
+    }
+
+    async function loadImage(src) {
+      if (loadedImages[src]) return loadedImages[src];
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => { loadedImages[src] = img; resolve(img); };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    async function showSheet(sheetId) {
+      const container = document.getElementById('sheets');
+      const src = SHEETS[sheetId];
+      if (!src) return;
+
+      const img = await loadImage(src);
+      const tileSize = sheetId === 'char' ? 32 : 16;
+      const cols = Math.floor(img.width / tileSize);
+      const rows = Math.floor(img.height / tileSize);
+
+      let html = `<div class="sheet-container" data-sheet-id="${sheetId}">`;
+      html += `<h2>${sheetId} — ${img.width}x${img.height} (${cols} cols × ${rows} rows, ${tileSize}px tiles)</h2>`;
+      html += `<div class="grid">`;
+
+      for (let r = 0; r < rows; r++) {
+        html += `<div class="tile-row">`;
+        for (let c = 0; c < cols; c++) {
+          const canvasId = `tile-${sheetId}-${c}-${r}`;
+          html += `<div class="tile-cell" onclick="selectTile('${sheetId}', ${c}, ${r}, ${tileSize})" data-col="${c}" data-row="${r}">`;
+          html += `<span class="label">(${c},${r})</span>`;
+          html += `<canvas id="${canvasId}" width="${tileSize * scale}" height="${tileSize * scale}"></canvas>`;
+          html += `</div>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+      container.innerHTML = html;
+
+      // Draw tiles
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const canvas = document.getElementById(`tile-${sheetId}-${c}-${r}`);
+          if (!canvas) continue;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+          // Dark background to see transparency
+          ctx.fillStyle = '#2a2a3e';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, c * tileSize, r * tileSize, tileSize, tileSize, 0, 0, tileSize * scale, tileSize * scale);
+        }
+      }
+    }
+
+    function selectTile(sheetId, col, row, tileSize) {
+      const sfCall = `sf('${sheetId}', ${col}, ${row})`;
+      document.getElementById('selected').innerHTML =
+        `<code>${sfCall}</code><br>` +
+        `Sheet: ${sheetId}<br>` +
+        `Position: (${col}, ${row})<br>` +
+        `Pixels: (${col * tileSize}, ${row * tileSize})<br>` +
+        `Tile size: ${tileSize}px`;
+      navigator.clipboard.writeText(sfCall).catch(() => { });
+    }
+
+    // Load floors by default
+    showSheet('floors');
+  </script>
+</body>
+
+</html>
