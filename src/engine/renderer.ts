@@ -39,6 +39,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { stretchingAgents } from './idleBehaviorManager';
 import { collaboratingAgents } from '@/store/collaborationStore';
 import { getAgent } from '@/config/agents';
+import type { AgentId } from '@/types/agent';
 
 /** Debug: render red semi-transparent tiles over all collision-blocked cells. Set to true manually when debugging collision. */
 const DEBUG_COLLISION = false;
@@ -749,7 +750,7 @@ function renderStatusOverlays(
 
     // Collaboration indicator: blue dot above agent head when actively processing a hop.
     // Distinct from amber thinking emote — renders independently (can co-exist).
-    if (collaboratingAgents.has(ch.id)) {
+    if (collaboratingAgents.has(ch.id as AgentId)) {
       const charScreen = worldToScreen(ch.x + TILE_SIZE / 2, ch.y - 16);
       const cx = Math.floor(charScreen.x);
       const cy = Math.floor(charScreen.y);
@@ -792,7 +793,7 @@ function renderHoverTooltip(
   for (const ch of characters) {
     if (ch.tileCol !== hoverTileCol || ch.tileRow !== hoverTileRow) continue;
 
-    const name = ch.id === 'billy' ? 'Billy' : (getAgent(ch.id)?.name ?? ch.id);
+    const name = ch.id === 'billy' ? 'Billy' : (getAgent(ch.id as AgentId)?.name ?? ch.id);
 
     // Position: horizontally centered on the character, above the sprite head
     const screen = worldToScreen(ch.x + TILE_SIZE / 2, ch.y - 14);
@@ -829,7 +830,7 @@ function renderHoverTooltip(
     ctx.fill();
 
     // Name text in agent color (or white for billy)
-    const color = ch.id === 'billy' ? '#ffffff' : (getAgent(ch.id)?.color ?? '#ffffff');
+    const color = ch.id === 'billy' ? '#ffffff' : (getAgent(ch.id as AgentId)?.color ?? '#ffffff');
     ctx.fillStyle = color;
     ctx.fillText(name, x, y);
 

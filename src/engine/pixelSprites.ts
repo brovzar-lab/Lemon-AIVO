@@ -190,7 +190,7 @@ export function drawBookshelf(ctx: CanvasRenderingContext2D, x: number, y: numbe
     for (let b = 0; b < 6 && bx < x + 40; b++) {
       const bw = 4 + (b % 3 === 0 ? 2 : 0);
       const bh = 10 + (b % 2) * 2;
-      rect(ctx, bx, sy + (14 - bh), bw, bh, bookColors[(s * 6 + b) % bookColors.length]);
+      rect(ctx, bx, sy + (14 - bh), bw, bh, bookColors[(s * 6 + b) % bookColors.length]!);
       rect(ctx, bx, sy + (14 - bh), 2, bh, P.textWhite);
       ctx.globalAlpha = 0.15;
       rect(ctx, bx, sy + (14 - bh), 2, bh, P.textWhite);
@@ -267,7 +267,7 @@ export function drawPresScreen(ctx: CanvasRenderingContext2D, x: number, y: numb
   const startX = x + 8;
   for (let i = 0; i < 5; i++) {
     const bh = 8 + ((i + 1) * 6) % 28;
-    rect(ctx, startX + i * 10, y + h - 8 - bh, 8, bh, colors[i]);
+    rect(ctx, startX + i * 10, y + h - 8 - bh, 8, bh, colors[i]!);
   }
   const cx = x + w - 24, cy = y + 20;
   rect(ctx, cx, cy, 8, 8, P.shirtBlue);
@@ -495,7 +495,7 @@ export function drawTileFloor(ctx: CanvasRenderingContext2D, x: number, y: numbe
 // ─── Status Dot ───
 export function drawStatusDot(ctx: CanvasRenderingContext2D, x: number, y: number, status: string, frame: number): void {
   const colors: Record<string, string> = { working: '#4caf50', idle: '#ff9800', meeting: '#2196f3' };
-  const c = colors[status] || colors.working;
+  const c: string = colors[status] ?? '#4caf50';
   const pulse = Math.sin((frame || 0) * 0.06) * 0.3 + 0.7;
   ctx.globalAlpha = pulse * 0.3;
   rect(ctx, x - 4, y - 4, 16, 16, c);

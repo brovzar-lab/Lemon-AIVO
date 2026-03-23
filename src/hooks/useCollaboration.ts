@@ -56,6 +56,7 @@ export function useCollaboration() {
       const convId = useChatStore.getState().activeConversationId;
       if (convId) {
         await useChatStore.getState().addMessage(convId, {
+          conversationId: convId,
           role: 'assistant',
           content: prose,
         });

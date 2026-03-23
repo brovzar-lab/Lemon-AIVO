@@ -23,7 +23,9 @@ export interface Furniture48Entry {
   sheetH?: number;    // total sheet height
 }
 
-export const FURNITURE_48_CATALOG: Furniture48Entry[] = [
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore TS2590: Array literal too large for TypeScript union inference
+export const FURNITURE_48_CATALOG: Array<Furniture48Entry> = [
   { key: "48c-generic-1247", src: "/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png", themeKey: "c-generic", themeLabel: "Generic (Office)", n: 1247, frameX: 720, frameY: 3696, frameW: 48, frameH: 48, sheetW: 768, sheetH: 3744 },
   { key: "48c-generic-1246", src: "/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png", themeKey: "c-generic", themeLabel: "Generic (Office)", n: 1246, frameX: 672, frameY: 3696, frameW: 48, frameH: 48, sheetW: 768, sheetH: 3744 },
   { key: "48c-generic-1245", src: "/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png", themeKey: "c-generic", themeLabel: "Generic (Office)", n: 1245, frameX: 624, frameY: 3696, frameW: 48, frameH: 48, sheetW: 768, sheetH: 3744 },

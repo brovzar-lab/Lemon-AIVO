@@ -372,7 +372,8 @@ export async function runCollaborationChain(
       // as a USER-role message so the agent knows it's information they RECEIVED
       // (not something they said). This lets them reference it naturally in
       // follow-up replies without re-triggering a consultation.
-      const targetAgent = getAgent(freshChain.hops.find(h => h.status === 'completed')?.toAgentId ?? '');
+      const completedHopAgentId = freshChain.hops.find(h => h.status === 'completed')?.toAgentId;
+      const targetAgent = completedHopAgentId ? getAgent(completedHopAgentId) : undefined;
       const targetName = targetAgent?.name ?? currentTargetAgentId;
       const resultText = summary
         ? `[You just consulted with ${targetName}. Here is what they told you:]\n\n${summary}`
