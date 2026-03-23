@@ -140,8 +140,8 @@ describe('collaborationStore', () => {
 
       const aborted = useCollaborationStore.getState().activeChain;
       expect(aborted?.status).toBe('aborted');
-      expect(aborted?.hops[0].status).toBe('completed');
-      expect(aborted?.hops[0].result).toBe('Financial analysis complete');
+      expect(aborted?.hops[0]!.status).toBe('completed');
+      expect(aborted?.hops[0]!.result).toBe('Financial analysis complete');
     });
 
     it('appends partial summary to originating chat thread', async () => {

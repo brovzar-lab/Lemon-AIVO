@@ -196,6 +196,7 @@ function drawOffice(ctx: CanvasRenderingContext2D, key: string, frame: number): 
 // ═══════════════════════════════════════════
 function drawBoardroom(ctx: CanvasRenderingContext2D, frame: number): void {
   const r = ROOMS.board;
+  if (!r) return;
   const wallH = Math.round(r.h * 0.25);
 
   S.rect(ctx, r.x, r.y, r.w, 6, P.border);
@@ -282,6 +283,7 @@ function drawHallways(ctx: CanvasRenderingContext2D): void {
   const hb = ROOMS.hallB;
   const hl = ROOMS.hallL;
   const hr = ROOMS.hallR;
+  if (!ht || !hb || !hl || !hr) return;
   const G = GAP;
 
   S.drawTileFloor(ctx, ht.x - G, ht.y - G, ht.w + G * 2, ht.h + G * 2);
