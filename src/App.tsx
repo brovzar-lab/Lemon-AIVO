@@ -22,6 +22,7 @@ import { ZoomControls } from '@/components/canvas/ZoomControls';
 import { EditorToolbar } from '@/components/canvas/EditorToolbar';
 import { useEditorStore } from '@/store/editorStore';
 import { MigrationPrompt } from '@/components/deal/MigrationPrompt';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import type { AgentId } from '@/types/agent';
 import { getAudioManager } from '@/engine/audioManager';
 import { startSimulation } from '@/services/simulation';
@@ -274,56 +275,62 @@ function App() {
       </div>
 
       <main ref={mainRef} style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-        <LeftPanel />
+        <ErrorBoundary name="Deals & Activity">
+          <LeftPanel />
+        </ErrorBoundary>
 
         {/* Center column — agent bar + canvas */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <AgentBar />
-          <EditorToolbar />
-          <div
-            style={{ flex: 1, position: 'relative', overflow: 'hidden', minWidth: 0 }}
-            onDragOver={handleDeskDragOver}
-            onDragLeave={handleDeskDragLeave}
-            onDrop={handleDeskDrop}
-          >
-            <OfficeCanvas />
-            <RoomLabel />
-          <ZoomControls />
+        <ErrorBoundary name="Office Canvas">
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <AgentBar />
+            <EditorToolbar />
+            <div
+              style={{ flex: 1, position: 'relative', overflow: 'hidden', minWidth: 0 }}
+              onDragOver={handleDeskDragOver}
+              onDragLeave={handleDeskDragLeave}
+              onDrop={handleDeskDrop}
+            >
+              <OfficeCanvas />
+              <RoomLabel />
+            <ZoomControls />
 
-          {/* Edit Layout button (hidden in editor mode) */}
-          <EditLayoutButton />
+            {/* Edit Layout button (hidden in editor mode) */}
+            <EditLayoutButton />
 
-          {/* Desk drop zone overlay */}
-          {isDeskDragOver && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,0.1)', border: '2px dashed #fbbf24', pointerEvents: 'none' }}>
-              <span style={{ fontSize: 36, marginBottom: 8 }}>📂</span>
-              <span style={{ color: '#fbbf24', fontWeight: 600, fontSize: 12 }}>Drop to upload to desk</span>
-              <span style={{ color: 'rgba(251,191,36,0.7)', fontSize: 10, marginTop: 4 }}>PDF · DOCX · Excel</span>
-            </div>
-          )}
+            {/* Desk drop zone overlay */}
+            {isDeskDragOver && (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,0.1)', border: '2px dashed #fbbf24', pointerEvents: 'none' }}>
+                <span style={{ fontSize: 36, marginBottom: 8 }}>📂</span>
+                <span style={{ color: '#fbbf24', fontWeight: 600, fontSize: 12 }}>Drop to upload to desk</span>
+                <span style={{ color: 'rgba(251,191,36,0.7)', fontSize: 10, marginTop: 4 }}>PDF · DOCX · Excel</span>
+              </div>
+            )}
 
-          {/* Hidden file input for desk upload button */}
-          <input
-            ref={deskFileInputRef}
-            type="file"
-            accept=".pdf,.docx,.xlsx,.xls"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleDeskFileInput}
-          />
+            {/* Hidden file input for desk upload button */}
+            <input
+              ref={deskFileInputRef}
+              type="file"
+              accept=".pdf,.docx,.xlsx,.xls"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleDeskFileInput}
+            />
 
 
 
-          {/* FileViewer overlays canvas area */}
-          <FileViewer
-            fileId={selectedFileId}
-            onClose={() => setSelectedFileId(null)}
-          />
-        </div>
-        </div>
+            {/* FileViewer overlays canvas area */}
+            <FileViewer
+              fileId={selectedFileId}
+              onClose={() => setSelectedFileId(null)}
+            />
+          </div>
+          </div>
+        </ErrorBoundary>
 
         {/* Right panel — Chat + Teamwork */}
-        <RightPanel />
+        <ErrorBoundary name="Chat & Collaboration">
+          <RightPanel />
+        </ErrorBoundary>
       </main>
 
       {/* Migration prompt modal */}
