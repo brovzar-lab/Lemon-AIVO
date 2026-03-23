@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['vitest-canvas-mock'],
+    setupFiles: ['vitest-canvas-mock', './src/test-setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
   },
 });
