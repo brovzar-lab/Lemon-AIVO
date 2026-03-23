@@ -56,6 +56,7 @@ export function useCollaboration() {
       const convId = useChatStore.getState().activeConversationId;
       if (convId) {
         await useChatStore.getState().addMessage(convId, {
+          conversationId: convId,
           role: 'assistant',
           content: prose,
         });
@@ -91,7 +92,7 @@ export function useCollaboration() {
 
     const task = expandTemplate(template, taskDescription);
     const dealName = `${template.name}: ${taskDescription.slice(0, 40)}`;
-    const chain = await useCollaborationStore.getState().startChain(
+    await useCollaborationStore.getState().startChain(
       originAgentId,
       task,
       dealName,

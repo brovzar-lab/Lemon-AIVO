@@ -8,7 +8,6 @@
 import { TILE_SIZE } from './types';
 import type { Character } from './types';
 import type { FurnitureItem, DecorationItem } from './officeLayout';
-import { FURNITURE, DECORATIONS } from './officeLayout';
 
 export interface Renderable {
   /** Y-sort key: bottom tile row of this object's footprint */
@@ -25,15 +24,15 @@ export interface Renderable {
  *
  * @param characters - Active characters to include
  * @param renderCharacterFn - Callback to draw a single character
- * @param renderFurnitureItemFn - Callback to draw a single furniture item
- * @param renderDecorationFn - Callback to draw a single decoration item
+ * @param _renderFurnitureItemFn - Reserved: furniture rendering now handled by pixelScene
+ * @param _renderDecorationFn - Reserved: decoration rendering now handled by pixelScene
  * @returns Sorted array of Renderables (back-to-front)
  */
 export function buildRenderables(
   characters: Character[],
   renderCharacterFn: (ctx: CanvasRenderingContext2D, ch: Character) => void,
-  renderFurnitureItemFn: (ctx: CanvasRenderingContext2D, item: FurnitureItem) => void,
-  renderDecorationFn: (ctx: CanvasRenderingContext2D, dec: DecorationItem) => void,
+  _renderFurnitureItemFn: (ctx: CanvasRenderingContext2D, item: FurnitureItem) => void,
+  _renderDecorationFn: (ctx: CanvasRenderingContext2D, dec: DecorationItem) => void,
 ): Renderable[] {
   const list: Renderable[] = [];
 

@@ -9,6 +9,7 @@ import { useCollaborationStore } from '@/store/collaborationStore';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { CHAIN_TEMPLATES } from '@/services/collaboration/chainTemplates';
 import { MessageList } from './MessageList';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ChatInput } from './ChatInput';
 import { TokenCounter } from './TokenCounter';
 import { ErrorBanner } from './ErrorBanner';
@@ -105,7 +106,7 @@ export function ChatPanel() {
 
   if (activeRoomId === 'war-room') {
     return (
-      <div style={panelBase}>
+      <div data-testid="chat-panel" style={panelBase}>
         <WarRoomPanel />
       </div>
     );
@@ -118,6 +119,7 @@ export function ChatPanel() {
 
     return (
       <div
+        data-testid="chat-panel"
         style={{ ...panelBase, position: 'relative' }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -204,7 +206,7 @@ export function ChatPanel() {
   }
 
   return (
-    <div style={panelBase}>
+    <div data-testid="chat-panel" style={panelBase}>
       <OverviewPanel />
     </div>
   );
@@ -256,12 +258,14 @@ function AgentChatPanel({
 
   return (
     <>
-      <MessageList
-        messages={messages}
-        isStreaming={isStreaming}
-        streamingContent={streamingContent}
-        agentName={agentName}
-      />
+      <ErrorBoundary name="Message Area">
+        <MessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          streamingContent={streamingContent}
+          agentName={agentName}
+        />
+      </ErrorBoundary>
 
       <TokenCounter tokenCount={tokenCount} isSummarizing={false} />
 

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useCollaborationStore, collaboratingAgents } from '@/store/collaborationStore';
-import { useDealStore } from '@/store/dealStore';
-
 // Mock dealStore.createDeal so tests don't need IDB
 vi.mock('@/store/dealStore', () => ({
   useDealStore: {
@@ -142,8 +140,8 @@ describe('collaborationStore', () => {
 
       const aborted = useCollaborationStore.getState().activeChain;
       expect(aborted?.status).toBe('aborted');
-      expect(aborted?.hops[0].status).toBe('completed');
-      expect(aborted?.hops[0].result).toBe('Financial analysis complete');
+      expect(aborted?.hops[0]!.status).toBe('completed');
+      expect(aborted?.hops[0]!.result).toBe('Financial analysis complete');
     });
 
     it('appends partial summary to originating chat thread', async () => {

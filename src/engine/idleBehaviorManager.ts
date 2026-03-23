@@ -15,6 +15,7 @@ import { ROOMS, OFFICE_TILE_MAP } from './officeLayout';
 import { startWalk } from './characters';
 import { collaboratingAgents } from '@/store/collaborationStore';
 import type { Character } from './types';
+import type { AgentId } from '@/types/agent';
 import { useActivityStore } from '@/store/activityStore';
 import { getAgent } from '@/config/agents';
 
@@ -139,7 +140,7 @@ export function tickIdleBehaviors(dt: number): void {
     if (agentStatus === 'thinking') continue;
 
     // Respect collaboration system: agent owned by chainRunner during hop processing
-    if (collaboratingAgents.has(agentId)) continue;
+    if (collaboratingAgents.has(agentId as AgentId)) continue;
 
     // Decrement behavior cooldowns every frame
     s.cooldownTimer -= dt;

@@ -34,7 +34,7 @@ describe('contextBridge', () => {
       // The finding section should have the truncated form
       expect(result).toContain('...');
       // The total rendered finding must not exceed 400 chars of content
-      const findingMatch = result.match(/### Marcos\n\n([\s\S]+?)(\n\n|$)/);
+      result.match(/### Marcos\n\n([\s\S]+?)(\n\n|$)/);
       // Summaries are truncated at 397 chars + '...' = 400 chars total
       const renderedSummary = result.split('### Marcos\n')[1]?.split('\n\n')[0] ?? '';
       expect(renderedSummary.length).toBeLessThanOrEqual(400);

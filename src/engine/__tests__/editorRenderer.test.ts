@@ -96,6 +96,7 @@ describe('renderEditorOverlay', () => {
     // Override hoverTileCol / hoverTileRow via module mock
     vi.doMock('@/engine/input', () => ({ hoverTileCol: 5, hoverTileRow: 5 }));
     // Re-import with updated mock
+    // @ts-expect-error Vite query-string import not recognized by TypeScript
     const { renderEditorOverlay: renderWithHover } = await import('../editorRenderer?hover=1');
     const ctx = makeCtx();
     // The function should not throw even with hover active

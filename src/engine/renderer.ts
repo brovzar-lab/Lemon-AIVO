@@ -20,10 +20,10 @@
  *
  * UI overlays reset to identity and use worldToScreen() for positioning.
  */
-import { TileType, TILE_SIZE, CHAR_SPRITE_W, CHAR_SPRITE_H, ZOOM_OVERVIEW_THRESHOLD } from './types';
+import { TILE_SIZE, CHAR_SPRITE_W, CHAR_SPRITE_H } from './types';
 import type { Camera, Character } from './types';
 import type { FurnitureItem, DecorationItem } from './officeLayout';
-import { OFFICE_TILE_MAP, ROOMS, ROOM_RUGS, getRoomAtTile, getTileStyle, getFurnitureAt, FURNITURE } from './officeLayout';
+import { OFFICE_TILE_MAP, ROOMS, getFurnitureAt, FURNITURE } from './officeLayout';
 import { getCollisionAt } from './tileMap';
 import { PLACEHOLDER_COLORS, getCharacterSheet, getEnvironmentSheetById, getCachedSprite } from './spriteSheet';
 import { CHARACTER_FRAMES } from './spriteAtlas';
@@ -31,7 +31,7 @@ import { LIMEZU_ATLAS } from './limeZuAtlas';
 import type { SheetFrame } from './limeZuAtlas';
 import { buildRenderables } from './depthSort';
 import { renderGlowEffects } from './glowEffects';
-import { computeTimeOfDay, applyFloorTint } from './timeOfDay';
+import { computeTimeOfDay } from './timeOfDay';
 import { drawScene as drawPixelScene, GAME_W as PIXEL_GAME_W, GAME_H as PIXEL_GAME_H } from './pixelScene';
 import { useFileStore } from '@/store/fileStore';
 import { dragOverRoomId, invalidDropMessage, invalidDropX, invalidDropY, hoverTileCol, hoverTileRow } from './input';
@@ -39,6 +39,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { stretchingAgents } from './idleBehaviorManager';
 import { collaboratingAgents } from '@/store/collaborationStore';
 import { getAgent } from '@/config/agents';
+import type { AgentId } from '@/types/agent';
 
 /** Debug: render red semi-transparent tiles over all collision-blocked cells. Set to true manually when debugging collision. */
 const DEBUG_COLLISION = false;
@@ -49,8 +50,6 @@ const BG_COLOR = '#5A4012';  // Muted brown — matches pixelScene floor wood to
 /** Frame counter for pixelScene animations (clocks, idle breathing) */
 let pixelSceneFrame = 0;
 
-/** Font for room labels */
-const LABEL_FONT_SIZE = 10;
 
 /** Agent room IDs (excludes war-room and billy) */
 const AGENT_ROOM_IDS = new Set<string>(['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie']);
@@ -176,60 +175,6 @@ export function renderFrame(
 
 // ── Per-Room Floor/Wall Mapping ──────────────────────────────────────────────
 
-/** Maps room IDs to their floor atlas key for a lived-in, varied look. */
-const ROOM_FLOOR_KEYS: Record<string, string> = {
-  'isaac':    'floor-b0-wood',       // warm wood plank
-  'billy':    'floor-b0-dark-wood',  // dark executive walnut
-  'patrik':   'floor-b0-wood',       // warm wood plank
-  'marcos':   'floor-b0-wood',       // warm wood plank
-  'sandra':   'floor-b0-dark-wood',  // dark walnut
-  'charlie':  'floor-b0-wood',       // warm wood plank
-  'wendy':    'floor-b0-wood',       // warm wood plank
-  'war-room': 'floor-b0-dark-wood',  // dark walnut boardroom floor
-};
-
-function getTileAtlasKey(tile: TileType, col: number, row: number): string {
-  // Check for editor-painted custom style first
-  const custom = getTileStyle(col, row);
-  if (custom) return custom;
-
-  switch (tile) {
-    case TileType.WALL:
-      return 'wall-brown-alt';      // warm brown cabin walls
-    case TileType.DOOR: {
-      const doorRoom = getRoomAtTile(col, row);
-      if (doorRoom) return ROOM_FLOOR_KEYS[doorRoom.id] ?? 'floor-b3-dark-tile';
-      return 'floor-b3-dark-tile';
-    }
-    case TileType.FLOOR: {
-      const room = getRoomAtTile(col, row);
-      if (room) return ROOM_FLOOR_KEYS[room.id] ?? 'floor-b0-wood';
-      return 'floor-b0-dark-wood';   // dark walnut hallway corridors
-    }
-    default:
-      return 'floor-b0-wood';
-  }
-}
-
-// ── Tile Color Mapping (fallback) ────────────────────────────────────────────
-
-function getTileColor(tile: TileType, col: number, row: number): string {
-  switch (tile) {
-    case TileType.WALL:
-      return '#3d2b1a'; // warm brown wood wall
-    case TileType.DOOR:
-      return '#4a3520'; // wood-toned doorway
-    case TileType.FLOOR: {
-      const room = getRoomAtTile(col, row);
-      if (room?.id === 'war-room') return '#3a2815'; // dark walnut
-      if (!room) return '#2a1a0e'; // dark wood hallway
-      return '#6e5a3e'; // warm wood
-    }
-    default:
-      return BG_COLOR;
-  }
-}
-
 // ── LimeZu Tile Drawing Helper ──────────────────────────────────────────────
 
 /**
@@ -283,58 +228,6 @@ function drawSheetFrame(
   const dstH = sf.frame.h === 0 ? sheet.naturalHeight : h;
   ctx.drawImage(sheet, sf.frame.x, sf.frame.y, srcW, srcH, x, y, dstW, dstH);
   return true;
-}
-
-// ── Solid Wall Rendering ──────────────────────────────────────────────────
-
-/** Shadow strip height in pixels on the floor row directly below a north-visible wall */
-const WALL_SHADOW_H = 3;
-
-/**
- * Renders 3/4 perspective depth effects on wall tiles.
- * Wall body is drawn by the sprite atlas in Layer 2. This only adds:
- *   - Darker face strip on south edge of north-facing walls
- *   - Shadow on the floor tile directly below
- */
-function renderWalls(
-  ctx: CanvasRenderingContext2D,
-  minCol: number,
-  maxCol: number,
-  minRow: number,
-  maxRow: number,
-): void {
-  const mapRows = OFFICE_TILE_MAP.length;
-  const FACE_H = 4;
-
-  for (let row = minRow; row <= maxRow; row++) {
-    const tileRow = OFFICE_TILE_MAP[row];
-    if (!tileRow) continue;
-    for (let col = minCol; col <= maxCol; col++) {
-      const tile = tileRow[col];
-      if (tile !== TileType.WALL) continue;
-
-      const x = col * TILE_SIZE;
-      const y = row * TILE_SIZE;
-
-      const hasSouthFloor = row + 1 < mapRows && isFloorOrDoor(OFFICE_TILE_MAP[row + 1]![col]!);
-
-      if (hasSouthFloor) {
-        // Darker face strip at bottom of north-facing wall (3/4 depth)
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(x, y + TILE_SIZE - FACE_H, TILE_SIZE, FACE_H);
-
-        // Shadow on the floor tile directly below
-        const floorY = (row + 1) * TILE_SIZE;
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(x, floorY, TILE_SIZE, WALL_SHADOW_H);
-      }
-    }
-  }
-}
-
-/** Returns true if tile is FLOOR or DOOR (walkable neighbor for wall face detection). */
-function isFloorOrDoor(tile: TileType): boolean {
-  return tile === TileType.FLOOR || tile === TileType.DOOR;
 }
 
 // ── Individual Item Rendering (for Y-sort) ──────────────────────────────────
@@ -857,7 +750,7 @@ function renderStatusOverlays(
 
     // Collaboration indicator: blue dot above agent head when actively processing a hop.
     // Distinct from amber thinking emote — renders independently (can co-exist).
-    if (collaboratingAgents.has(ch.id)) {
+    if (collaboratingAgents.has(ch.id as AgentId)) {
       const charScreen = worldToScreen(ch.x + TILE_SIZE / 2, ch.y - 16);
       const cx = Math.floor(charScreen.x);
       const cy = Math.floor(charScreen.y);
@@ -883,56 +776,6 @@ function renderStatusOverlays(
   }
 }
 
-// ── Office Title Signs ───────────────────────────────────────────────────────
-
-/**
- * Renders the agent's company title in caps above the top edge of each agent room.
- * Visible at all zoom levels as a permanent nameplate sign.
- */
-function renderOfficeTitles(
-  ctx: CanvasRenderingContext2D,
-  zoom: number,
-  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
-): void {
-  const fontSize = Math.max(7, 8 * zoom);
-  ctx.font = `bold ${fontSize}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-
-  for (const room of ROOMS) {
-    if (!AGENT_ROOM_IDS.has(room.id)) continue;
-    const agent = getAgent(room.id);
-    if (!agent) continue;
-
-    const title = agent.title.toUpperCase();
-    const r = room.tileRect;
-
-    // Center horizontally, sit just above the room's top wall
-    const screenPos = worldToScreen(
-      (r.col + r.width / 2) * TILE_SIZE,
-      r.row * TILE_SIZE,
-    );
-    const x = Math.floor(screenPos.x);
-    const y = Math.floor(screenPos.y) - Math.max(2, 3 * zoom);
-
-    const metrics = ctx.measureText(title);
-    const padX = 4 * zoom;
-    const padY = 2 * zoom;
-
-    // Dark pill background
-    ctx.fillStyle = 'rgba(0,0,0,0.72)';
-    ctx.fillRect(
-      x - metrics.width / 2 - padX,
-      y - fontSize - padY,
-      metrics.width + padX * 2,
-      fontSize + padY * 2,
-    );
-
-    ctx.fillStyle = agent.color;
-    ctx.fillText(title, x, y);
-  }
-}
-
 // ── Hover Name Tooltip ────────────────────────────────────────────────────────
 
 /**
@@ -950,7 +793,7 @@ function renderHoverTooltip(
   for (const ch of characters) {
     if (ch.tileCol !== hoverTileCol || ch.tileRow !== hoverTileRow) continue;
 
-    const name = ch.id === 'billy' ? 'Billy' : (getAgent(ch.id)?.name ?? ch.id);
+    const name = ch.id === 'billy' ? 'Billy' : (getAgent(ch.id as AgentId)?.name ?? ch.id);
 
     // Position: horizontally centered on the character, above the sprite head
     const screen = worldToScreen(ch.x + TILE_SIZE / 2, ch.y - 14);
@@ -987,7 +830,7 @@ function renderHoverTooltip(
     ctx.fill();
 
     // Name text in agent color (or white for billy)
-    const color = ch.id === 'billy' ? '#ffffff' : (getAgent(ch.id)?.color ?? '#ffffff');
+    const color = ch.id === 'billy' ? '#ffffff' : (getAgent(ch.id as AgentId)?.color ?? '#ffffff');
     ctx.fillStyle = color;
     ctx.fillText(name, x, y);
 
@@ -995,60 +838,3 @@ function renderHoverTooltip(
   }
 }
 
-// ── Room Label Overlay ──────────────────────────────────────────────────────
-
-function renderRoomLabel(
-  ctx: CanvasRenderingContext2D,
-  roomId: string,
-  zoom: number,
-  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
-): void {
-  const room = ROOMS.find((r) => r.id === roomId);
-  if (!room) return;
-
-  const r = room.tileRect;
-  // Position label at bottom-center of room interior (inside the room, not above)
-  const labelScreen = worldToScreen(
-    (r.col + r.width / 2) * TILE_SIZE,
-    (r.row + r.height - 1) * TILE_SIZE,
-  );
-  const labelX = Math.floor(labelScreen.x);
-  const labelY = Math.floor(labelScreen.y - 2 * zoom);
-
-  const fontSize = LABEL_FONT_SIZE * zoom;
-  ctx.font = `bold ${fontSize}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-
-  // Display name: "Name -- Title" format for agent offices
-  const ROOM_DISPLAY_NAMES: Record<string, string> = {
-    'billy': "BILLY's Office",
-    'patrik': 'Patrik -- CFO',
-    'sandra': 'Sandra -- Producer',
-    'marcos': 'Marcos -- Lawyer',
-    'isaac': 'Isaac -- Development',
-    'wendy': 'Wendy -- Coach',
-    'charlie': 'Charlie -- Designer',
-    'war-room': 'War Room',
-  };
-
-  // Chain icon suffix: shown on room label when a collaborating agent is present
-  const hasCollaborator = collaboratingAgents.has(roomId);
-  const text = (ROOM_DISPLAY_NAMES[roomId] ?? room.name) + (hasCollaborator ? ' ⛓' : '');
-  const metrics = ctx.measureText(text);
-  const padX = 4 * zoom;
-  const padY = 2 * zoom;
-
-  // Background pill — blue tint when a collaborator is present
-  ctx.fillStyle = hasCollaborator ? 'rgba(59,130,246,0.85)' : 'rgba(0,0,0,0.7)';
-  ctx.fillRect(
-    labelX - metrics.width / 2 - padX,
-    labelY - fontSize - padY,
-    metrics.width + padX * 2,
-    fontSize + padY * 2,
-  );
-
-  // Text
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, labelX, labelY);
-}

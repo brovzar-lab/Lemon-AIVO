@@ -51,7 +51,7 @@ export function CollabHistoryList({ chains, activeChain, onStartNew }: Props) {
   const isEmpty = displayChains.length === 0;
 
   return (
-    <div style={{
+    <div data-testid="collab-history-list" style={{
       flex: 1,
       overflowY: 'auto',
       padding: 10,
@@ -141,7 +141,7 @@ export function CollabHistoryList({ chains, activeChain, onStartNew }: Props) {
                       <span style={{ color: 'var(--text-secondary)' }}> → </span>
                       {targetNames.length > 0 ? (
                         targetNames.map((name, i) => {
-                          const agent = getAgent(targetAgentIds[i]);
+                          const agent = getAgent(targetAgentIds[i]!);
                           return (
                             <span key={targetAgentIds[i]}>
                               {i > 0 && <span style={{ color: 'var(--text-secondary)' }}>, </span>}

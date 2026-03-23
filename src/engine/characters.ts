@@ -24,6 +24,7 @@ import { useActivityStore } from '@/store/activityStore';
 import { getAgent } from '@/config/agents';
 import { interruptIdleBehavior } from './idleBehaviorManager';
 import { collaboratingAgents } from '@/store/collaborationStore';
+import type { AgentId } from '@/types/agent';
 
 /** Number of walk animation frames in a cycle */
 const WALK_FRAMES = 4;
@@ -275,7 +276,7 @@ export function updateAllCharacters(
       } else {
         // BILLY entered an agent's room — interrupt idle behavior, then start knock pause
         // Skip interrupt if agent is actively collaborating (collaboration immune to BILLY room-entry)
-        if (!collaboratingAgents.has(room.id)) {
+        if (!collaboratingAgents.has(room.id as AgentId)) {
           interruptIdleBehavior(room.id);
         }
         knockTimers.set('billy', KNOCK_DURATION);
