@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useCollaborationStore, collaboratingAgents } from '@/store/collaborationStore';
-import { useDealStore } from '@/store/dealStore';
-
 // Mock dealStore.createDeal so tests don't need IDB
 vi.mock('@/store/dealStore', () => ({
   useDealStore: {

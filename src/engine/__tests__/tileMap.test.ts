@@ -6,11 +6,8 @@ import {
   findPath,
   getTileAt,
   createTileMap,
-  // @ts-expect-error -- these exports do not exist yet (RED phase — Wave 1 will add them)
   rebuildCollisionOverlay,
-  // @ts-expect-error -- these exports do not exist yet (RED phase — Wave 1 will add them)
   getCollisionAt,
-  // @ts-expect-error -- these exports do not exist yet (RED phase — Wave 1 will add them)
   resetCollisionOverlay,
 } from '../tileMap';
 import { OFFICE_TILE_MAP, ROOMS, WAR_ROOM_SEATS, getRoomAtTile } from '../officeLayout';

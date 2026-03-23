@@ -13,14 +13,11 @@
  *   IDLE-05 — Engine-local only — no Zustand setState calls
  */
 
-// @ts-expect-error -- module does not exist yet (RED phase — Wave 2 will create it)
 import {
   initIdleBehaviors,
   tickIdleBehaviors,
   interruptIdleBehavior,
-  resumeIdleBehavior,
   stretchingAgents,
-  // @ts-expect-error -- same
 } from '../idleBehaviorManager';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

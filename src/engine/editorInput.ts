@@ -418,12 +418,6 @@ function applyDoor(col: number, row: number): void {
   useEditorStore.getState().pushAction(action);
 }
 
-function handleSelect(col: number, row: number): void {
-  // Check if clicking on furniture
-  const idx = getFurnitureAt(col, row);
-  useEditorStore.getState().setSelectedCanvasFurniture(idx);
-}
-
 function handleFurniturePlacement(col: number, row: number): void {
   const store = useEditorStore.getState();
   const furnitureId = store.selectedFurnitureId;

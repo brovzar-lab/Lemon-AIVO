@@ -37,88 +37,6 @@ const DEF_BY_KEY48 = new Map<string, FurnitureDef>(
 import { ROOM_TEMPLATES, deleteSelectedFurniture, rotateSelectedFurniture } from '@/engine/editorInput';
 import type { RoomTemplate } from '@/engine/editorInput';
 
-// ── Furniture Catalog ───────────────────────────────────────────────────────
-
-interface FurnitureCatalogItem {
-  id: string; // atlas key
-  label: string;
-}
-
-const FURNITURE_CATEGORIES: Record<string, FurnitureCatalogItem[]> = {
-  Desks: [
-    { id: 'desk-wood-2wide', label: 'Wood Desk (2w)' },
-    { id: 'desk-wood-3wide', label: 'Wood Desk (3w)' },
-    { id: 'desk-study', label: 'Study Desk' },
-    { id: 'desk-lamp', label: 'Desk Lamp' },
-    { id: 'keyboard', label: 'Keyboard' },
-    { id: 'phone-desk', label: 'Desk Phone' },
-    { id: 'monitor', label: 'Monitor' },
-  ],
-  Chairs: [
-    { id: 'chair-office', label: 'Office Chair' },
-    { id: 'conf-chair', label: 'Conference Chair' },
-    { id: 'director-chair', label: 'Director Chair' },
-    { id: 'armchair', label: 'Armchair' },
-  ],
-  Tables: [
-    { id: 'conf-table', label: 'Conference Table' },
-    { id: 'coffee-table', label: 'Coffee Table' },
-  ],
-  Shelves: [
-    { id: 'bookshelf-2tall', label: 'Bookshelf' },
-    { id: 'bookshelf-library', label: 'Library Shelf' },
-    { id: 'cabinet-2wide', label: 'Cabinet' },
-    { id: 'filing-cabinet', label: 'Filing Cabinet' },
-    { id: 'shelf-wall', label: 'Wall Shelf' },
-  ],
-  Tech: [
-    { id: 'studio-monitor', label: 'Studio Monitor' },
-    { id: 'camera', label: 'Camera' },
-    { id: 'studio-light', label: 'Studio Light' },
-    { id: 'clapboard', label: 'Clapboard' },
-    { id: 'film-reel', label: 'Film Reel' },
-    { id: 'conf-projector', label: 'Projector' },
-  ],
-  Plants: [
-    { id: 'plant-potted', label: 'Potted Plant' },
-    { id: 'plant-large', label: 'Large Plant' },
-    { id: 'desk-plant', label: 'Desk Plant' },
-  ],
-  Decor: [
-    { id: 'whiteboard', label: 'Whiteboard' },
-    { id: 'chalkboard', label: 'Chalkboard' },
-    { id: 'couch-2wide', label: 'Couch' },
-    { id: 'cushion', label: 'Cushion' },
-    { id: 'floor-lamp', label: 'Floor Lamp' },
-    { id: 'water-cooler', label: 'Water Cooler' },
-    { id: 'conf-podium', label: 'Podium' },
-    { id: 'coffee-mug', label: 'Coffee Mug' },
-    { id: 'pen-holder', label: 'Pen Holder' },
-    { id: 'photo-frame', label: 'Photo Frame' },
-    { id: 'figurine', label: 'Figurine' },
-    { id: 'candle', label: 'Candle' },
-    { id: 'papers', label: 'Papers' },
-    { id: 'postit-note', label: 'Post-it' },
-  ],
-  Characters: [
-    { id: 'metro-char-light', label: 'Character (Light)' },
-    { id: 'metro-char-medium', label: 'Character (Medium)' },
-    { id: 'metro-char-dark', label: 'Character (Dark)' },
-    { id: 'metro-hair-brown', label: 'Hair (Brown)' },
-    { id: 'metro-hair-blonde', label: 'Hair (Blonde)' },
-    { id: 'metro-hair-red', label: 'Hair (Red)' },
-    { id: 'metro-hair-orange', label: 'Hair (Orange)' },
-    { id: 'metro-hair-black', label: 'Hair (Black)' },
-    { id: 'metro-outfit-1', label: 'Outfit 1' },
-    { id: 'metro-outfit-2', label: 'Outfit 2' },
-    { id: 'metro-outfit-3', label: 'Outfit 3' },
-    { id: 'metro-outfit-4', label: 'Outfit 4' },
-    { id: 'metro-outfit-5', label: 'Outfit 5' },
-    { id: 'metro-outfit-6', label: 'Outfit 6' },
-    { id: 'metro-suit', label: 'Suit' },
-  ],
-};
-
 // ── Color palette ───────────────────────────────────────────────────────────
 
 const COLORS = {
@@ -285,8 +203,6 @@ export function EditorToolbar() {
   const redo = useEditorStore((s) => s.redo);
   const gridDimensions = useEditorStore((s) => s.gridDimensions);
   const setEditorMode = useEditorStore((s) => s.setEditorMode);
-  const furnitureCategory = useEditorStore((s) => s.furnitureCategory);
-  const setFurnitureCategory = useEditorStore((s) => s.setFurnitureCategory);
   const selectedFurnitureId = useEditorStore((s) => s.selectedFurnitureId);
   const setSelectedFurniture = useEditorStore((s) => s.setSelectedFurniture);
 
@@ -329,7 +245,7 @@ export function EditorToolbar() {
   const advancedTools = TOOLS.filter((t) => t.group === 'advanced');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative' }}>
+    <div data-testid="editor-toolbar" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative' }}>
       {/* Main toolbar */}
       <div
         style={{

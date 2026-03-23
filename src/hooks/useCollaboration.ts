@@ -91,7 +91,7 @@ export function useCollaboration() {
 
     const task = expandTemplate(template, taskDescription);
     const dealName = `${template.name}: ${taskDescription.slice(0, 40)}`;
-    const chain = await useCollaborationStore.getState().startChain(
+    await useCollaborationStore.getState().startChain(
       originAgentId,
       task,
       dealName,

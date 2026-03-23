@@ -20,8 +20,6 @@ import {
   clearUserPan,
   setupInputHandlers,
   removeInputHandlers,
-  hoverTileCol,
-  hoverTileRow,
 } from '@/engine/input';
 import { useFileStore } from '@/store/fileStore';
 
@@ -319,7 +317,6 @@ describe('setupInputHandlers: drag-and-drop', () => {
   let canvas: HTMLCanvasElement;
   let cleanup: () => void;
   let mockState: ReturnType<typeof makeDragState>;
-  let mockFileStore: { addFile: ReturnType<typeof vi.fn>; files: [] };
 
   function makeDragState() {
     return {
@@ -351,7 +348,6 @@ describe('setupInputHandlers: drag-and-drop', () => {
     canvas.width = 800;
     canvas.height = 600;
     mockState = makeDragState();
-    mockFileStore = { addFile: vi.fn(), files: [] };
     vi.mocked(useOfficeStore.getState).mockReturnValue(mockState as never);
     cleanup = setupInputHandlers(canvas);
   });
