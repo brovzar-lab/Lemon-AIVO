@@ -1,21 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// Tile map derived from pixelScene visual layout.
+// Tile map — RPG Maker MZ–compatible grid (32×28 tiles at 48px/tile).
 //
-// The pixelScene (1280×912) is scaled by (720/1280, 608/912) = (0.5625, 0.6667)
-// to fit the world space (45 cols × 38 rows × 16px = 720 × 608).
+// Room layout:
+//   [Isaac 8×7]  [Billy 12×7]  [Patrik 8×7]     ← rows 1-7
+//             [ hallway rows 8-9 ]
+//   [Marcos 8×8] [BOARD 12×8] [Sandra 8×8]      ← rows 10-17
+//             [ hallway rows 18-19 ]
+//   [Charlie 8×7] [open floor] [Wendy 8×7]      ← rows 20-26
 //
-// Conversion: pixelScene (px_x, px_y) → tile (col, row):
-//   col = floor(px_x * 0.5625 / 16) = floor(px_x / 28.444)
-//   row = floor(px_y * 0.66667 / 16) = floor(px_y / 24.0)
-//
-// Room layout (matching pixelScene):
-//   [Isaac 11×9]   [Billy 19×9]   [Patrik 11×9]      ← rows 2-10
-//             [ hallway rows 11-12 ]
-//   [Marcos 11×12] [BOARD 19×12]  [Sandra 11×12]     ← rows 14-25
-//             [ hallway rows 26-27 ]
-//   [Charlie 11×10] [ open floor ] [Wendy 11×10]     ← rows 28-37
-//
-// Vertical hallways: cols 11-12 (left), cols 32-33 (right), rows 11-27
+// Vertical hallways: cols 8-9 (left), cols 22-23 (right), rows 8-19
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { TileType } from './types';
@@ -26,8 +19,8 @@ const F = TileType.FLOOR;
 const W = TileType.WALL;
 const D = TileType.DOOR;
 
-const GRID_COLS = 45;
-const GRID_ROWS = 38;
+const GRID_COLS = 32;
+const GRID_ROWS = 28;
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 function buildTileMap(): TileType[][] {
@@ -50,35 +43,40 @@ function buildTileMap(): TileType[][] {
     fill(col + 1, row + 1, w - 2, h - 2, F);
   };
 
-  // ── ROOMS — aligned to pixelScene visual positions ────────────────────────
-  // TOP ROW (rows 2-10)
-  room(0, 2, 11, 9);    // Isaac:   cols  0-10,  rows 2-10
-  room(13, 2, 19, 9);   // Billy:   cols 13-31,  rows 2-10
-  room(34, 2, 11, 9);   // Patrik:  cols 34-44,  rows 2-10
+  // Fill border with VOID to mark the map edges (RPG Maker convention)
+  fill(0, 0, GRID_COLS, 1, W);   // top border
+  fill(0, GRID_ROWS - 1, GRID_COLS, 1, W); // bottom border
+  fill(0, 0, 1, GRID_ROWS, W);   // left border (gets overwritten by rooms touching col 0)
+  fill(GRID_COLS - 1, 0, 1, GRID_ROWS, W); // right border
 
-  // MID (rows 14-25)
-  room(0, 14, 11, 12);  // Marcos:  cols  0-10,  rows 14-25
-  room(13, 14, 19, 12); // Board:   cols 13-31,  rows 14-25
-  room(34, 14, 11, 12); // Sandra:  cols 34-44,  rows 14-25
+  // ── TOP ROW (rows 1-7) ────────────────────────────────────────────────────
+  room(0, 1, 8, 7);     // Isaac:   cols  0-7,   rows 1-7
+  room(10, 1, 12, 7);   // Billy:   cols 10-21,  rows 1-7
+  room(24, 1, 8, 7);    // Patrik:  cols 24-31,  rows 1-7
 
-  // BOT ROW (rows 28-37)
-  room(0, 28, 11, 10);  // Charlie: cols  0-10,  rows 28-37
-  room(34, 28, 11, 10); // Wendy:   cols 34-44,  rows 28-37
+  // ── MID ROW (rows 10-17) ──────────────────────────────────────────────────
+  room(0, 10, 8, 8);    // Marcos:  cols  0-7,   rows 10-17
+  room(10, 10, 12, 8);  // Board:   cols 10-21,  rows 10-17
+  room(24, 10, 8, 8);   // Sandra:  cols 24-31,  rows 10-17
 
-  // ── DOORS — positioned to match pixelScene door locations ───────────────
-  // Top row: bottom walls (row 10)
-  map[10]![5] = D;                      // Isaac bottom door, center col
-  map[10]![22] = D; map[10]![23] = D;   // Billy bottom door, cols 22-23
-  map[10]![39] = D;                      // Patrik bottom door
+  // ── BOTTOM ROW (rows 20-26) ───────────────────────────────────────────────
+  room(0, 20, 8, 7);    // Charlie: cols  0-7,   rows 20-26
+  room(24, 20, 8, 7);   // Wendy:   cols 24-31,  rows 20-26
 
-  // Mid row: side walls
-  map[18]![10] = D; map[19]![10] = D;   // Marcos right wall door (col 10, rows 18-19)
-  map[18]![13] = D; map[19]![13] = D;   // Board left wall door (col 13, rows 18-19)
-  map[18]![34] = D; map[19]![34] = D;   // Sandra left wall door (col 34, rows 18-19)
+  // ── DOORS ─────────────────────────────────────────────────────────────────
+  // Top row: bottom walls (row 7)
+  map[7]![4] = D;                         // Isaac bottom door
+  map[7]![15] = D; map[7]![16] = D;       // Billy bottom door (double)
+  map[7]![28] = D;                         // Patrik bottom door
 
-  // Bot row: side walls
-  map[33]![10] = D; map[34]![10] = D;   // Charlie right wall door (col 10, rows 33-34)
-  map[33]![34] = D; map[34]![34] = D;   // Wendy left wall door (col 34, rows 33-34)
+  // Mid row: side doors
+  map[13]![7] = D; map[14]![7] = D;       // Marcos right wall door
+  map[13]![10] = D; map[14]![10] = D;     // Board left wall door
+  map[13]![24] = D; map[14]![24] = D;     // Sandra left wall door
+
+  // Bottom row: side doors
+  map[23]![7] = D; map[24]![7] = D;       // Charlie right wall door
+  map[23]![24] = D; map[24]![24] = D;     // Wendy left wall door
 
   return map;
 }
@@ -91,66 +89,74 @@ export const ROOMS: Room[] = [
   {
     id: 'isaac',
     name: "Isaac's Office",
-    tileRect: { col: 0, row: 2, width: 11, height: 9 },
-    doorTile: { col: 5, row: 10 },
-    seatTile: { col: 3, row: 8 },
-    billyStandTile: { col: 4, row: 8 },
+    tileRect: { col: 0, row: 1, width: 8, height: 7 },
+    doorTile: { col: 4, row: 7 },
+    seatTile: { col: 3, row: 5 },
+    billyStandTile: { col: 4, row: 5 },
+    fileTableTile: { col: 6, row: 5 },
   },
   {
     id: 'billy',
     name: "BILLY's Office",
-    tileRect: { col: 13, row: 2, width: 19, height: 9 },
-    doorTile: { col: 22, row: 10 },
-    seatTile: { col: 22, row: 8 },
-    billyStandTile: { col: 23, row: 8 },
+    tileRect: { col: 10, row: 1, width: 12, height: 7 },
+    doorTile: { col: 15, row: 7 },
+    seatTile: { col: 15, row: 5 },
+    billyStandTile: { col: 16, row: 5 },
+    fileTableTile: { col: 12, row: 5 },
   },
   {
     id: 'patrik',
     name: "Patrik's Office",
-    tileRect: { col: 34, row: 2, width: 11, height: 9 },
-    doorTile: { col: 39, row: 10 },
-    seatTile: { col: 39, row: 8 },
-    billyStandTile: { col: 38, row: 8 },
+    tileRect: { col: 24, row: 1, width: 8, height: 7 },
+    doorTile: { col: 28, row: 7 },
+    seatTile: { col: 28, row: 5 },
+    billyStandTile: { col: 27, row: 5 },
+    fileTableTile: { col: 25, row: 5 },
   },
   {
     id: 'marcos',
     name: "Marcos's Office",
-    tileRect: { col: 0, row: 14, width: 11, height: 12 },
-    doorTile: { col: 10, row: 18 },
-    seatTile: { col: 3, row: 22 },
-    billyStandTile: { col: 4, row: 22 },
+    tileRect: { col: 0, row: 10, width: 8, height: 8 },
+    doorTile: { col: 7, row: 13 },
+    seatTile: { col: 3, row: 15 },
+    billyStandTile: { col: 4, row: 15 },
+    fileTableTile: { col: 6, row: 15 },
   },
   {
     id: 'war-room',
     name: 'Board Room',
-    tileRect: { col: 13, row: 14, width: 19, height: 12 },
-    doorTile: { col: 13, row: 18 },
-    seatTile: { col: 22, row: 20 },
-    billyStandTile: { col: 22, row: 17 },
+    tileRect: { col: 10, row: 10, width: 12, height: 8 },
+    doorTile: { col: 10, row: 13 },
+    seatTile: { col: 15, row: 14 },
+    billyStandTile: { col: 15, row: 12 },
+    fileTableTile: { col: 15, row: 14 },
   },
   {
     id: 'sandra',
     name: "Sandra's Office",
-    tileRect: { col: 34, row: 14, width: 11, height: 12 },
-    doorTile: { col: 34, row: 18 },
-    seatTile: { col: 39, row: 22 },
-    billyStandTile: { col: 38, row: 22 },
+    tileRect: { col: 24, row: 10, width: 8, height: 8 },
+    doorTile: { col: 24, row: 13 },
+    seatTile: { col: 28, row: 15 },
+    billyStandTile: { col: 27, row: 15 },
+    fileTableTile: { col: 25, row: 15 },
   },
   {
     id: 'charlie',
     name: "Charlie's Office",
-    tileRect: { col: 0, row: 28, width: 11, height: 10 },
-    doorTile: { col: 10, row: 33 },
-    seatTile: { col: 3, row: 36 },
-    billyStandTile: { col: 4, row: 36 },
+    tileRect: { col: 0, row: 20, width: 8, height: 7 },
+    doorTile: { col: 7, row: 23 },
+    seatTile: { col: 3, row: 24 },
+    billyStandTile: { col: 4, row: 24 },
+    fileTableTile: { col: 6, row: 24 },
   },
   {
     id: 'wendy',
     name: "Wendy's Coaching Room",
-    tileRect: { col: 34, row: 28, width: 11, height: 10 },
-    doorTile: { col: 34, row: 33 },
-    seatTile: { col: 39, row: 33 },
-    billyStandTile: { col: 38, row: 33 },
+    tileRect: { col: 24, row: 20, width: 8, height: 7 },
+    doorTile: { col: 24, row: 23 },
+    seatTile: { col: 28, row: 24 },
+    billyStandTile: { col: 27, row: 24 },
+    fileTableTile: { col: 25, row: 22 },
   },
 ];
 
@@ -169,80 +175,69 @@ export interface FurnitureItem {
   /**
    * Override the depth-sort row used by buildRenderables.
    * When set, sort key = row + spriteRows - 1 instead of row + height - 1.
-   * Use when the sprite is shorter than the collision footprint (e.g. conference
-   * table: sprite 3 rows tall but collision 7 rows to prevent sprite overlap).
    */
   spriteRows?: number;
 }
 
-/** Hardcoded default furniture items. Merged back after IDB restore so they
- *  always appear even if the saved layout didn't contain them. */
+/** Default furniture — RPG Maker scale (rooms are 6×5 / 10×5 interior). */
 export const DEFAULT_FURNITURE: FurnitureItem[] = [
-  // ════════════════════════════════════════════════════════════════════════════
-  // Default office furniture — desk, chair, bookshelf, plant per room.
-  // Users can modify these via Edit Mode (✏️ button).
-  // ════════════════════════════════════════════════════════════════════════════
+  // ── Isaac's Office (interior cols 1-6, rows 2-6) ──────────────────────────
+  { roomId: 'isaac',   type: 'desk',      col: 2,  row: 2,  width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'isaac',   type: 'chair',     col: 3,  row: 4,  width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'isaac',   type: 'bookshelf', col: 1,  row: 2,  width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'isaac',   type: 'plant',     col: 6,  row: 2,  width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: 'isaac',   type: 'filing-cabinet', col: 5, row: 2, width: 1, height: 1, atlasKey: 'filing-cabinet' },
 
-  // ── Isaac's Office (interior cols 3-13, rows 3-10) ─────────────────────────
-  { roomId: 'isaac',   type: 'desk',      col: 5,  row: 3,  width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'isaac',   type: 'chair',     col: 8,  row: 5,  width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'isaac',   type: 'bookshelf', col: 3,  row: 3,  width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'isaac',   type: 'plant',     col: 12, row: 3,  width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'isaac',   type: 'filing-cabinet', col: 10, row: 3, width: 1, height: 1, atlasKey: 'filing-cabinet' },
+  // ── Billy's Office (interior cols 11-20, rows 2-6) ────────────────────────
+  { roomId: 'billy',   type: 'desk',      col: 14, row: 2,  width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'billy',   type: 'chair',     col: 15, row: 4,  width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'billy',   type: 'bookshelf', col: 11, row: 2,  width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'billy',   type: 'plant',     col: 20, row: 2,  width: 1, height: 1, atlasKey: 'plant-large-g' },
+  { roomId: 'billy',   type: 'monitor',   col: 17, row: 2,  width: 2, height: 1, atlasKey: 'monitor' },
+  { roomId: 'billy',   type: 'couch',     col: 11, row: 5,  width: 2, height: 1, atlasKey: 'couch-2wide' },
 
-  // ── Billy's Office (interior cols 17-29, rows 3-10) ────────────────────────
-  { roomId: 'billy',   type: 'desk',      col: 21, row: 3,  width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'billy',   type: 'chair',     col: 22, row: 5,  width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'billy',   type: 'bookshelf', col: 17, row: 3,  width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'billy',   type: 'plant',     col: 28, row: 3,  width: 2, height: 2, atlasKey: 'plant-large-g' },
-  { roomId: 'billy',   type: 'monitor',   col: 24, row: 3,  width: 4, height: 2, atlasKey: 'monitor' },
+  // ── Patrik's Office (interior cols 25-30, rows 2-6) ───────────────────────
+  { roomId: 'patrik',  type: 'desk',      col: 27, row: 2,  width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'patrik',  type: 'chair',     col: 28, row: 4,  width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'patrik',  type: 'bookshelf', col: 25, row: 2,  width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'patrik',  type: 'plant',     col: 30, row: 2,  width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: 'patrik',  type: 'filing-cabinet', col: 30, row: 6, width: 1, height: 1, atlasKey: 'filing-cabinet' },
 
-  // ── Patrik's Office (interior cols 33-41, rows 3-10) ───────────────────────
-  { roomId: 'patrik',  type: 'desk',      col: 35, row: 3,  width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'patrik',  type: 'chair',     col: 37, row: 5,  width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'patrik',  type: 'bookshelf', col: 33, row: 3,  width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'patrik',  type: 'plant',     col: 41, row: 3,  width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'patrik',  type: 'filing-cabinet', col: 40, row: 3, width: 1, height: 1, atlasKey: 'filing-cabinet' },
+  // ── Marcos's Office (interior cols 1-6, rows 11-16) ───────────────────────
+  { roomId: 'marcos',  type: 'desk',      col: 2,  row: 11, width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'marcos',  type: 'chair',     col: 3,  row: 13, width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'marcos',  type: 'bookshelf', col: 1,  row: 11, width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'marcos',  type: 'plant',     col: 6,  row: 11, width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: 'marcos',  type: 'filing-cabinet', col: 1, row: 14, width: 1, height: 1, atlasKey: 'filing-cabinet' },
 
-  // ── Marcos's Office (interior cols 3-12, rows 15-22) ───────────────────────
-  { roomId: 'marcos',  type: 'desk',      col: 5,  row: 15, width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'marcos',  type: 'chair',     col: 7,  row: 17, width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'marcos',  type: 'bookshelf', col: 3,  row: 15, width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'marcos',  type: 'plant',     col: 11, row: 15, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'marcos',  type: 'filing-cabinet', col: 10, row: 15, width: 1, height: 1, atlasKey: 'filing-cabinet' },
+  // ── Sandra's Office (interior cols 25-30, rows 11-16) ─────────────────────
+  { roomId: 'sandra',  type: 'desk',      col: 27, row: 11, width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'sandra',  type: 'chair',     col: 28, row: 13, width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'sandra',  type: 'bookshelf', col: 30, row: 11, width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'sandra',  type: 'plant',     col: 25, row: 11, width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: 'sandra',  type: 'filing-cabinet', col: 30, row: 14, width: 1, height: 1, atlasKey: 'filing-cabinet' },
 
-  // ── Sandra's Office (interior cols 33-41, rows 15-22) ──────────────────────
-  { roomId: 'sandra',  type: 'desk',      col: 35, row: 15, width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'sandra',  type: 'chair',     col: 37, row: 17, width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'sandra',  type: 'bookshelf', col: 33, row: 15, width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'sandra',  type: 'plant',     col: 41, row: 15, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'sandra',  type: 'filing-cabinet', col: 40, row: 15, width: 1, height: 1, atlasKey: 'filing-cabinet' },
+  // ── Charlie's Office (interior cols 1-6, rows 21-25) ──────────────────────
+  { roomId: 'charlie', type: 'desk',      col: 2,  row: 21, width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'charlie', type: 'chair',     col: 3,  row: 23, width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'charlie', type: 'bookshelf', col: 1,  row: 21, width: 1, height: 2, atlasKey: 'bookshelf-2tall' },
+  { roomId: 'charlie', type: 'plant',     col: 6,  row: 21, width: 1, height: 1, atlasKey: 'plant-potted' },
 
-  // ── Charlie's Office (interior cols 3-12, rows 27-34) ──────────────────────
-  { roomId: 'charlie', type: 'desk',      col: 5,  row: 27, width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'charlie', type: 'chair',     col: 7,  row: 29, width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'charlie', type: 'bookshelf', col: 3,  row: 27, width: 2, height: 3, atlasKey: 'bookshelf-2tall' },
-  { roomId: 'charlie', type: 'plant',     col: 11, row: 27, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'charlie', type: 'filing-cabinet', col: 10, row: 27, width: 1, height: 1, atlasKey: 'filing-cabinet' },
+  // ── Wendy's Coaching Room (interior cols 25-30, rows 21-25) ───────────────
+  { roomId: 'wendy',   type: 'desk',      col: 27, row: 21, width: 2, height: 2, atlasKey: 'desk-wood-2wide' },
+  { roomId: 'wendy',   type: 'chair',     col: 28, row: 23, width: 1, height: 1, atlasKey: 'chair-office' },
+  { roomId: 'wendy',   type: 'couch',     col: 25, row: 21, width: 2, height: 1, atlasKey: 'couch-2wide' },
+  { roomId: 'wendy',   type: 'plant',     col: 30, row: 21, width: 1, height: 1, atlasKey: 'plant-potted' },
 
-  // ── Wendy's Office (interior cols 33-41, rows 27-34) ───────────────────────
-  { roomId: 'wendy',   type: 'desk',      col: 35, row: 27, width: 2, height: 3, atlasKey: 'desk-wood-2wide' },
-  { roomId: 'wendy',   type: 'chair',     col: 37, row: 29, width: 2, height: 2, atlasKey: 'chair-office' },
-  { roomId: 'wendy',   type: 'plant',     col: 33, row: 27, width: 2, height: 2, atlasKey: 'plant-large-g' },
-  { roomId: 'wendy',   type: 'couch',     col: 40, row: 27, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: 'wendy',   type: 'filing-cabinet', col: 40, row: 30, width: 1, height: 1, atlasKey: 'filing-cabinet' },
-
-  // ── Board Room (conference table is placed separately) ─────────────────────
-  { roomId: 'war-room', type: 'table',    col: 20, row: 18, width: 5, height: 3, atlasKey: 'conf-table', spriteRows: 3 },
-  { roomId: 'war-room', type: 'whiteboard', col: 17, row: 15, width: 3, height: 2, atlasKey: 'whiteboard' },
+  // ── Board Room (conference table centered) ─────────────────────────────────
+  { roomId: 'war-room', type: 'table',    col: 13, row: 12, width: 4, height: 3, atlasKey: 'conf-table', spriteRows: 3 },
+  { roomId: 'war-room', type: 'whiteboard', col: 11, row: 11, width: 2, height: 1, atlasKey: 'whiteboard' },
 
   // ── HALLWAY PLANTS — corridor junctions ────────────────────────────────────
-  { roomId: '',        type: 'plant',     col: 14, row: 12, width: 2, height: 2, atlasKey: 'plant-large-g' },
-  { roomId: '',        type: 'plant',     col: 30, row: 12, width: 2, height: 2, atlasKey: 'plant-large-g' },
-  { roomId: '',        type: 'plant',     col: 14, row: 23, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: '',        type: 'plant',     col: 30, row: 23, width: 1, height: 2, atlasKey: 'plant-potted' },
-  { roomId: '',        type: 'plant',     col: 14, row: 35, width: 2, height: 2, atlasKey: 'plant-large-g' },
-  { roomId: '',        type: 'plant',     col: 30, row: 35, width: 2, height: 2, atlasKey: 'plant-large-g' },
+  { roomId: '',        type: 'plant',     col: 9,  row: 8,  width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: '',        type: 'plant',     col: 22, row: 8,  width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: '',        type: 'plant',     col: 9,  row: 19, width: 1, height: 1, atlasKey: 'plant-potted' },
+  { roomId: '',        type: 'plant',     col: 22, row: 19, width: 1, height: 1, atlasKey: 'plant-potted' },
 ];
 
 export const FURNITURE: FurnitureItem[] = [...DEFAULT_FURNITURE];
@@ -251,35 +246,18 @@ export const FURNITURE: FurnitureItem[] = [...DEFAULT_FURNITURE];
 // -- War Room Seats -----------------------------------------------------------
 
 /**
- * Board Room table: cols 17-27, rows 18-22 (pixelScene drawBoardTable).
- * Seats placed AROUND the table, not on it.
+ * Board Room table: cols 13-16, rows 12-14.
+ * Seats placed AROUND the table.
  * Billy at head (top center). Wendy does not attend board meetings.
  */
 export const WAR_ROOM_SEATS: Record<string, TileCoord> = {
-  //         row 17 = above table (chairs facing down)
-  billy:   { col: 22, row: 17 },   // head of table — top center
-  patrik:  { col: 19, row: 17 },   // top left
-  isaac:   { col: 25, row: 17 },   // top right
-  //         row 23 = below table (chairs facing up)
-  marcos:  { col: 19, row: 23 },   // bottom left
-  charlie: { col: 22, row: 23 },   // bottom center
-  sandra:  { col: 25, row: 23 },   // bottom right
+  billy:   { col: 15, row: 11 },   // head of table — top center
+  patrik:  { col: 13, row: 11 },   // top left
+  isaac:   { col: 17, row: 11 },   // top right
+  marcos:  { col: 13, row: 16 },   // bottom left
+  charlie: { col: 15, row: 16 },   // bottom center
+  sandra:  { col: 17, row: 16 },   // bottom right
 };
-
-// -- Office Furniture ─────────────────────────────────────────────────────────
-//
-// Sprites used (all visually verified in sprite-debugger 2026-03-18):
-//   desk-wood-2wide  : Generic sheet col=0 row=5 w=2 h=3 (orange wood top-down desk)
-//   chair-office     : Generic sheet col=4 row=5 w=2 h=2 (round golden chair)
-//   bookshelf-2tall  : Generic sheet col=0 row=8 w=2 h=3 (dark storage unit)
-//   plant-large      : Living Room sheet col=10 row=0 w=2 h=2 (confirmed working)
-//   couch-2wide      : Living Room sheet col=2 row=0 w=3 h=2 (sofa)
-//   conf-table       : Conference sheet col=0 row=2 w=5 h=3 (conference table)
-//
-// Layout design: desk against north wall, chair at seatTile, bookshelf on one
-// wall, plant in opposite corner. Collision footprints match sprite visual size.
-
-// ── Cozy Wood Cabin — all rooms clean (no furniture) ─────────────────────────
 
 // -- Decoration Items ---------------------------------------------------------
 
@@ -305,25 +283,21 @@ export interface RoomRug {
 }
 
 export const ROOM_RUGS: RoomRug[] = [
-  // Agent office rugs: warm earth tones under desk/chair area (3×4 tiles)
-  { roomId: 'isaac',   col: 6,  row: 4,  w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  { roomId: 'patrik',  col: 35, row: 4,  w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  { roomId: 'marcos',  col: 5,  row: 16, w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  { roomId: 'sandra',  col: 35, row: 16, w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  { roomId: 'charlie', col: 5,  row: 28, w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  { roomId: 'wendy',   col: 35, row: 28, w: 4, h: 4, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
-  // Billy's exec office: larger darker rug
-  { roomId: 'billy',   col: 19, row: 4,  w: 6, h: 5, color: 'rgba(80, 60, 40, 0.15)',  borderColor: 'rgba(80, 60, 40, 0.3)'  },
-  // War Room: blue-grey carpet accent under conference table
-  { roomId: 'war-room', col: 19, row: 17, w: 8, h: 8, color: 'rgba(60, 80, 110, 0.10)', borderColor: 'rgba(60, 80, 110, 0.20)' },
+  { roomId: 'isaac',   col: 2,  row: 3,  w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'patrik',  col: 26, row: 3,  w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'marcos',  col: 2,  row: 12, w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'sandra',  col: 26, row: 12, w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'charlie', col: 2,  row: 22, w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'wendy',   col: 26, row: 22, w: 4, h: 3, color: 'rgba(139, 90, 43, 0.12)', borderColor: 'rgba(139, 90, 43, 0.25)' },
+  { roomId: 'billy',   col: 13, row: 3,  w: 5, h: 3, color: 'rgba(80, 60, 40, 0.15)',  borderColor: 'rgba(80, 60, 40, 0.3)'  },
+  { roomId: 'war-room', col: 12, row: 12, w: 6, h: 4, color: 'rgba(60, 80, 110, 0.10)', borderColor: 'rgba(60, 80, 110, 0.20)' },
 ];
 
 // -- Recreation Area Bounds ---------------------------------------------------
 
 export const REC_AREA_BOUNDS = {
-  // Open floor area below Board Room south wall (rows 29+, cols 15-28)
-  minCol: 15, maxCol: 28,
-  minRow: 29, maxRow: 37,
+  minCol: 10, maxCol: 21,
+  minRow: 20, maxRow: 26,
 } as const;
 
 export function isRecAreaTile(col: number, row: number): boolean {
@@ -353,8 +327,6 @@ export function clearTileStyle(col: number, row: number): void {
   TILE_STYLES.delete(`${col},${row}`);
 }
 
-// -- Room Lookup --------------------------------------------------------------
-
 // ── Mutable Setters (used by layout editor) ─────────────────────────────────
 
 /** Set a single tile type in the map. */
@@ -364,7 +336,7 @@ export function setTile(col: number, row: number, type: TileType): void {
   }
 }
 
-/** Returns all seat tiles, War Room seats, BILLY stand tiles, and filing cabinet tiles as collision exemptions. */
+/** Returns all seat tiles, War Room seats, BILLY stand tiles as collision exemptions. */
 export function getCollisionExemptions(): TileCoord[] {
   const exemptions: TileCoord[] = [];
   for (const room of ROOMS) {
@@ -372,13 +344,18 @@ export function getCollisionExemptions(): TileCoord[] {
     exemptions.push(room.billyStandTile);
   }
   for (const seat of Object.values(WAR_ROOM_SEATS)) exemptions.push(seat);
-  // Filing cabinets are solid furniture but agents must be able to walk past them
-  exemptions.push({ col: 5,  row: 5  }); // isaac
-  exemptions.push({ col: 41, row: 5  }); // patrik
-  exemptions.push({ col: 5,  row: 17 }); // marcos
-  exemptions.push({ col: 41, row: 17 }); // sandra
-  exemptions.push({ col: 5,  row: 29 }); // charlie
-  exemptions.push({ col: 41, row: 29 }); // wendy
+
+  // Boardroom walking corridors around conference table
+  const warRoom = ROOMS.find((r) => r.id === 'war-room');
+  if (warRoom) {
+    const interiorStart = warRoom.tileRect.col + 1;
+    const interiorEnd   = warRoom.tileRect.col + warRoom.tileRect.width - 2;
+    for (let c = interiorStart; c <= interiorEnd; c++) {
+      exemptions.push({ col: c, row: 11 }); // above table
+      exemptions.push({ col: c, row: 16 }); // below table
+    }
+  }
+
   return exemptions;
 }
 

@@ -9,7 +9,7 @@ interface ErrorBannerProps {
  */
 export function ErrorBanner({ error, onRetry, onDismiss }: ErrorBannerProps) {
   return (
-    <div style={{ padding: '0 8px', marginBottom: 4 }}>
+    <div data-testid="error-banner" style={{ padding: '0 8px', marginBottom: 4 }}>
       <div style={{
         borderRadius: 6,
         border: '1px solid var(--accent-coral-dim)',

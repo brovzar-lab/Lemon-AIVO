@@ -25,7 +25,7 @@ export function RightPanel() {
 
   return (
     <>
-      <aside style={{
+      <aside data-testid="right-panel" style={{
         width: 'var(--panel-width)',
         minWidth: 'var(--panel-width)',
         height: '100%',

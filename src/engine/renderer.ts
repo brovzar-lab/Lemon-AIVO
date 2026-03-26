@@ -33,6 +33,7 @@ import { buildRenderables } from './depthSort';
 import { renderGlowEffects } from './glowEffects';
 import { computeTimeOfDay } from './timeOfDay';
 import { drawScene as drawPixelScene, GAME_W as PIXEL_GAME_W, GAME_H as PIXEL_GAME_H } from './pixelScene';
+import { renderDecorationOverlay } from './decorationOverlay';
 import { useFileStore } from '@/store/fileStore';
 import { dragOverRoomId, invalidDropMessage, invalidDropX, invalidDropY, hoverTileCol, hoverTileRow } from './input';
 import { useEditorStore } from '@/store/editorStore';
@@ -149,6 +150,13 @@ export function renderFrame(
   // ── Layer 4.5: Glow Effects (additive compositing over scene) ────────
   const timeOfDay = computeTimeOfDay();
   renderGlowEffects(ctx, timeOfDay, elapsedTime);
+
+  // ── Layer 4.6: Placed Decorations (Decorate Mode overlay sprites) ─────
+  const decorState = useEditorStore.getState();
+  if (decorState.placedDecorations.length > 0 || decorState.decorGhostState) {
+    ctx.setTransform(zoom * dpr, 0, 0, zoom * dpr, tx * dpr, ty * dpr);
+    renderDecorationOverlay(ctx, decorState.placedDecorations, decorState.decorGhostState);
+  }
 
   // ── Reset to identity for UI overlays ──────────────────────────────────
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -372,11 +380,11 @@ export function renderDropZoneHighlight(
 
 // ── File Icon Rendering ─────────────────────────────────────────────────────
 
-/** Returns the desk rectangle for an agent room (col, row, width, height in tiles) */
+/** Returns the file table tile rectangle for an agent room — where paper icons are drawn. */
 export function getDeskRect(room: typeof ROOMS[number]): { col: number; row: number; width: number; height: number } {
   return {
-    col: room.seatTile.col,
-    row: room.seatTile.row - 1,
+    col: room.fileTableTile.col,
+    row: room.fileTableTile.row,
     width: 2,
     height: 1,
   };
@@ -393,7 +401,7 @@ export function renderFileIcons(
   worldToScreen: (wx: number, wy: number) => { x: number; y: number },
 ): void {
   const { files } = useFileStore.getState();
-  hoveredFileId = null; // Reset each frame
+  hoveredFileId = null;
 
   const tileSize = TILE_SIZE * zoom;
 
@@ -408,104 +416,114 @@ export function renderFileIcons(
     const deskX = Math.floor(deskScreen.x);
     const deskY = Math.floor(deskScreen.y);
 
-    const iconW = Math.floor(tileSize * 0.35);
-    const iconH = Math.floor(tileSize * 0.45);
+    // Paper dimensions scaled to zoom
+    const paperW = Math.max(6, Math.floor(tileSize * 0.40));
+    const paperH = Math.max(8, Math.floor(tileSize * 0.52));
 
-    const visibleFiles = agentFiles.slice(0, 5);
+    // Stack offset: each paper peeks 3px below the previous
+    const stackStep = Math.max(2, Math.floor(zoom * 2.5));
 
-    for (let i = 0; i < visibleFiles.length; i++) {
-      const file = visibleFiles[i]!;
+    // Center the stack horizontally on the desk tile
+    const stackLeft = deskX + Math.floor((tileSize - paperW) / 2);
 
-      // Deterministic scatter for "messy desk" feel
-      const scatterX = ((i * 7 + 3) % 5) - 2;
-      const scatterY = ((i * 3 + 1) % 3) - 1;
+    // Limit visual stack to 8 papers max
+    const visibleCount = Math.min(agentFiles.length, 8);
 
-      const ix = deskX + Math.floor((i % 3) * iconW * 1.3) + scatterX * zoom;
-      const iy = deskY + Math.floor(Math.floor(i / 3) * iconH * 1.2) + scatterY * zoom;
+    // Stack top position (bottom paper drawn first, top paper last)
+    const stackTopY = deskY + Math.floor((tileSize * 0.08));
 
-      // White paper background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(ix, iy, iconW, iconH);
+    // Draw from bottom to top (reversed so top paper renders last = on top)
+    for (let i = visibleCount - 1; i >= 0; i--) {
+      const file = agentFiles[i]!;
+      const py = stackTopY + (visibleCount - 1 - i) * stackStep;
 
-      // Folded corner (top-right triangle)
-      const foldSize = Math.max(2, Math.floor(zoom * 2));
-      ctx.fillStyle = '#e0e0e0';
+      // White paper
+      ctx.fillStyle = '#f8f8f8';
+      ctx.fillRect(stackLeft, py, paperW, paperH);
+
+      // Folded top-right corner
+      const foldSize = Math.max(2, Math.floor(zoom * 1.5));
+      ctx.fillStyle = '#d0d0d0';
       ctx.beginPath();
-      ctx.moveTo(ix + iconW - foldSize, iy);
-      ctx.lineTo(ix + iconW, iy + foldSize);
-      ctx.lineTo(ix + iconW, iy);
+      ctx.moveTo(stackLeft + paperW - foldSize, py);
+      ctx.lineTo(stackLeft + paperW, py + foldSize);
+      ctx.lineTo(stackLeft + paperW, py);
       ctx.closePath();
       ctx.fill();
 
-      // Header bar: red for PDF, blue for DOCX
-      ctx.fillStyle = file.type === 'pdf' ? '#ef4444' : '#3b82f6';
-      ctx.fillRect(ix, iy, iconW, Math.max(2, Math.floor(zoom)));
+      // File type color bar on top paper only (top paper = index 0)
+      if (i === 0) {
+        const barH = Math.max(2, Math.floor(zoom * 1.2));
+        ctx.fillStyle = file.type === 'pdf' ? '#ef4444' : '#3b82f6';
+        ctx.fillRect(stackLeft, py, paperW, barH);
+      }
 
-      // Tiny text lines inside for realism
-      ctx.fillStyle = '#cccccc';
+      // Subtle horizontal lines (document text lines)
+      ctx.fillStyle = '#dddddd';
       const lineH = Math.max(1, Math.floor(zoom * 0.5));
-      const lineW = iconW - 4;
-      for (let l = 0; l < 3; l++) {
-        const ly = iy + Math.floor(zoom) + 2 + l * (lineH + 2);
-        if (ly + lineH < iy + iconH - 1) {
-          ctx.fillRect(ix + 2, ly, lineW * (l === 2 ? 0.6 : 1), lineH);
+      for (let l = 1; l <= 3; l++) {
+        const ly = py + Math.floor(paperH * 0.25 * l);
+        if (ly + lineH < py + paperH - 1) {
+          const lineW = l === 3 ? paperW * 0.6 : paperW - 4;
+          ctx.fillRect(stackLeft + 2, ly, lineW, lineH);
         }
       }
 
       // Border
-      ctx.strokeStyle = '#999999';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(ix + 0.5, iy + 0.5, iconW - 1, iconH - 1);
+      ctx.strokeStyle = '#aaaaaa';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(stackLeft + 0.5, py + 0.5, paperW - 1, paperH - 1);
 
-      // Check hover
-      if (hoverTileCol >= 0 && hoverTileRow >= 0) {
+      // Hover detection on top paper
+      if (i === 0 && hoverTileCol >= 0 && hoverTileRow >= 0) {
         const hoverScreen = worldToScreen(hoverTileCol * TILE_SIZE, hoverTileRow * TILE_SIZE);
         const hoverX = Math.floor(hoverScreen.x);
         const hoverY = Math.floor(hoverScreen.y);
+
         if (
-          hoverX >= ix - tileSize / 2 && hoverX <= ix + iconW + tileSize / 2 &&
-          hoverY >= iy - tileSize / 2 && hoverY <= iy + iconH + tileSize / 2
+          hoverX >= stackLeft - tileSize / 3 && hoverX <= stackLeft + paperW + tileSize / 3 &&
+          hoverY >= py - tileSize / 3 && hoverY <= py + paperH + tileSize / 3
         ) {
           hoveredFileId = file.id;
 
-          // Hover tooltip: filename above icon
+          // Tooltip: show filename
           const name = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
           ctx.font = `${Math.max(8, 8 * zoom / 2)}px monospace`;
           const tm = ctx.measureText(name);
-          const tpx = 4;
+          const tpx = 5;
 
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+          ctx.fillStyle = 'rgba(0,0,0,0.85)';
           ctx.beginPath();
-          ctx.roundRect(ix - tpx, iy - 14 * zoom / 2, tm.width + tpx * 2, 12 * zoom / 2, 3);
+          ctx.roundRect(stackLeft - tpx, py - 16 * zoom / 2, tm.width + tpx * 2, 12 * zoom / 2, 3);
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText(name, ix, iy - 8 * zoom / 2);
+          ctx.fillText(name, stackLeft, py - 10 * zoom / 2);
         }
       }
     }
 
-    // "+N" badge if more than 5 files
-    if (agentFiles.length > 5) {
-      const overflow = agentFiles.length - 5;
+    // '+N' badge when there are more than 8 files
+    if (agentFiles.length > 8) {
+      const overflow = agentFiles.length - 8;
       const badgeText = `+${overflow}`;
-      const bx = deskX + desk.width * tileSize - Math.floor(tileSize * 0.4);
-      const by = deskY + Math.floor(tileSize * 0.1);
+      const bx = stackLeft + paperW + Math.floor(zoom);
+      const by = stackTopY;
 
-      ctx.font = `bold ${Math.max(8, 8 * zoom / 2)}px monospace`;
+      ctx.font = `bold ${Math.max(7, 7 * zoom / 2)}px monospace`;
       const bm = ctx.measureText(badgeText);
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
       ctx.beginPath();
-      ctx.roundRect(bx, by, bm.width + 6, 12 * zoom / 2, 3);
+      ctx.roundRect(bx, by, bm.width + 6, 11 * zoom / 2, 3);
       ctx.fill();
 
       ctx.fillStyle = '#fbbf24';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(badgeText, bx + 3, by + 6 * zoom / 2);
+      ctx.fillText(badgeText, bx + 3, by + 5 * zoom / 2);
     }
   }
 }

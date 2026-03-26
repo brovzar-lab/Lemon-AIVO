@@ -33,7 +33,7 @@ export function CreateDealForm({ onCreated, onCancel }: CreateDealFormProps) {
   };
 
   return (
-    <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)' }}>
+    <div data-testid="create-deal-form" style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)' }}>
       <input
         ref={nameRef} type="text" value={name}
         onChange={(e) => setName(e.target.value)}

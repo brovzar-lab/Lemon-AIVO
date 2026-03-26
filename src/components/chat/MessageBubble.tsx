@@ -26,7 +26,7 @@ export const MessageBubble = memo(function MessageBubble({ message, agentName = 
 
   if (isSummary) {
     return (
-      <div className="chat-msg agent">
+      <div data-testid="message-bubble" className="chat-msg agent">
         <div className="msg-header">
           <span className="msg-author" style={{ color: 'var(--text-secondary)' }}>CONTEXT SUMMARY</span>
         </div>
@@ -44,7 +44,7 @@ export const MessageBubble = memo(function MessageBubble({ message, agentName = 
 
   if (isUser) {
     return (
-      <div className="chat-msg user">
+      <div data-testid="message-bubble" className="chat-msg user">
         {message.source === 'war-room' && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
             <WarRoomBadge />
@@ -70,7 +70,7 @@ export const MessageBubble = memo(function MessageBubble({ message, agentName = 
   const visibleContent = dealAction ? stripDealAction(message.content) : message.content;
 
   return (
-    <div className="chat-msg agent">
+    <div data-testid="message-bubble" className="chat-msg agent">
       <div className="msg-header">
         <span className="msg-author" style={{ color: 'var(--accent-gold)' }}>{agentName}</span>
         {isWarRoom && <WarRoomBadge />}

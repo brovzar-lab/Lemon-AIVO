@@ -12,7 +12,7 @@ interface StreamingIndicatorProps {
  */
 export function StreamingIndicator({ content, agentName = 'Agent' }: StreamingIndicatorProps) {
   return (
-    <div className="chat-msg agent">
+    <div data-testid="streaming-indicator" className="chat-msg agent">
       <div className="msg-header">
         <span className="msg-author" style={{ color: 'var(--accent-gold)' }}>{agentName}</span>
       </div>

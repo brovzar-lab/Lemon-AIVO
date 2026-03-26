@@ -81,7 +81,7 @@ export function DealSidebar() {
   };
 
   return (
-    <div style={{
+    <div data-testid="deal-sidebar" style={{
       height: '100%', width: 200, flexShrink: 0,
       background: 'var(--bg-panel)', borderRight: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',

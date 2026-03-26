@@ -13,22 +13,22 @@ export const enum TileType {
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
-/** Native tile size in pixels (displayed at 2x zoom as 32x32) */
-export const TILE_SIZE = 16;
+/** Native tile size in pixels (48×48 — RPG Maker compatible) */
+export const TILE_SIZE = 48;
 
-/** Character sprite draw width (32px — LimeZu 48px source scaled to 2 tiles) */
-export const CHAR_SPRITE_W = 32;
-/** Character sprite draw height (64px — LimeZu 96px source scaled proportionally) */
-export const CHAR_SPRITE_H = 64;
+/** Character sprite draw width (96px — LimeZu 48px source × 2 tiles wide) */
+export const CHAR_SPRITE_W = 96;
+/** Character sprite draw height (192px — LimeZu 96px source × 2 tiles tall) */
+export const CHAR_SPRITE_H = 192;
 
 /** Zoom levels below this threshold are treated as overview mode (no camera follow) */
 export const ZOOM_OVERVIEW_THRESHOLD = 1.5;
 
-/** Base walk speed in pixels/sec (~4 tiles/sec at 16px tiles) */
-export const WALK_SPEED = 64;
+/** Base walk speed in pixels/sec (~4 tiles/sec at 48px tiles) */
+export const WALK_SPEED = 192;
 
 /** Fast walk speed for long-distance traversals */
-export const WALK_SPEED_FAST = 128;
+export const WALK_SPEED_FAST = 384;
 
 /** Tile distance threshold before ramping to fast speed (4 for compact layout) */
 export const SPEED_RAMP_TILES = 4;
@@ -62,6 +62,9 @@ export interface Room {
   doorTile: TileCoord;
   seatTile: TileCoord;
   billyStandTile: TileCoord;
+  /** Tile that visually aligns with the dark-brown file table drawn in pixelScene.
+   *  Paper icons are rendered here so they appear on the table, not on the agent. */
+  fileTableTile: TileCoord;
 }
 
 // ── Character ───────────────────────────────────────────────────────────────

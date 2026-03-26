@@ -62,7 +62,7 @@ export function ChatInput({
   );
 
   return (
-    <div className="chat-input-area" style={{ flexDirection: 'column', gap: 4 }}>
+    <div data-testid="chat-input" className="chat-input-area" style={{ flexDirection: 'column', gap: 4 }}>
       {/* Processing indicator */}
       {isProcessing && (
         <div style={{

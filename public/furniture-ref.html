@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🛋 Lemon Studios — Furniture Reference</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1319; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; }
+  h1 { color: #60a5fa; font-size: 22px; margin-bottom: 6px; letter-spacing: 1px; }
+  .subtitle { color: rgba(255,255,255,0.4); font-size: 12px; margin-bottom: 24px; }
+  
+  /* Combos section */
+  .combos-section { margin-bottom: 32px; }
+  .combos-section h2 { color: #fbbf24; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+  .combo-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+  .combo-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 120px;
+  }
+  .combo-card canvas { image-rendering: pixelated; background: rgba(255,255,255,0.03); border-radius: 4px; }
+  .combo-label { font-size: 9px; color: rgba(255,255,255,0.5); text-align: center; }
+  .combo-name { font-size: 11px; color: #93c5fd; font-weight: 600; text-align: center; }
+
+  /* Catalog section */
+  .category-section { margin-bottom: 28px; }
+  .category-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: #60a5fa; padding: 6px 0; margin-bottom: 10px;
+    border-bottom: 1px solid rgba(59,130,246,0.2);
+  }
+  .furniture-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .furniture-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    min-width: 88px;
+  }
+  .furniture-card:hover {
+    border-color: rgba(59,130,246,0.6);
+    background: rgba(59,130,246,0.08);
+  }
+  .furniture-card canvas { image-rendering: pixelated; background: rgba(255,255,255,0.03); border-radius: 3px; }
+  .furniture-card .name { font-size: 9px; color: rgba(255,255,255,0.7); text-align: center; }
+  .furniture-card .dims { font-size: 8px; color: rgba(255,255,255,0.3); }
+
+  .status { font-size: 11px; color: #fbbf24; margin-bottom: 16px; }
+  .loading { color: rgba(255,255,255,0.4); font-size: 11px; font-style: italic; }
+  a.back { display: inline-block; margin-bottom: 16px; color: #60a5fa; font-size: 11px; text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← Back to Lemon Studios</a>
+<h1>🛋 Furniture Reference Gallery</h1>
+<p class="subtitle">All assembled furniture from the sprite sheets at 3× scale. Use this to pick pieces for the Decorate Mode.</p>
+
+<div id="status" class="status loading">Loading sprite sheets…</div>
+<div id="combos-section" class="combos-section" style="display:none">
+  <h2>🖥 Desk + Chair Combinations</h2>
+  <div id="combo-grid" class="combo-grid"></div>
+</div>
+<div id="catalog"></div>
+
+<script>
+// ── Sprite sheet paths ────────────────────────────────────────────────────────
+const SHEETS = {
+  'generic-48':      '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png',
+  'living-room-48':  '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/2_LivingRoom_48x48.png',
+  'conference-48':   '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/13_Conference_Hall_48x48.png',
+  'classroom-48':    '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/5_Classroom_and_library_48x48.png',
+  'film-studio-48':  '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/23_Television_and_Film_Studio_48x48.png',
+};
+
+// T=48px cell size
+const T = 48;
+function crop(sheetId, col, row, w=1, h=1) {
+  return { sheetId, sx: col*T, sy: row*T, sw: w*T, sh: h*T, cols: w, rows: h };
+}
+
+// ── Furniture catalog ────────────────────────────────────────────────────────
+const CATALOG = [
+  // Desks
+  { name:'Wood Desk',       category:'Desks',           defW:2, defH:3, ...crop('generic-48',    0,  5, 2, 3) },
+  { name:'Long Wood Desk',  category:'Desks',           defW:4, defH:3, ...crop('generic-48',    2, 34, 4, 3) },
+  { name:'Study Desk',      category:'Desks',           defW:2, defH:2, ...crop('classroom-48',  0,  0, 2, 2) },
+  { name:'Cabinet (Dark)',  category:'Desks',           defW:2, defH:3, ...crop('generic-48',    0, 34, 2, 3) },
+  // Chairs & Seating
+  { name:'Office Chair',   category:'Chairs & Seating', defW:2, defH:2, ...crop('generic-48',    4,  5, 2, 2) },
+  { name:'Conf Chair',     category:'Chairs & Seating', defW:2, defH:2, ...crop('conference-48', 0,  5, 2, 2) },
+  { name:'Armchair',       category:'Chairs & Seating', defW:2, defH:2, ...crop('living-room-48',5,  0, 2, 2) },
+  { name:'Director Chair', category:'Chairs & Seating', defW:2, defH:2, ...crop('film-studio-48',8,  4, 2, 2) },
+  { name:'Sofa (3-wide)',  category:'Chairs & Seating', defW:3, defH:2, ...crop('living-room-48',2,  0, 3, 2) },
+  // Tables
+  { name:'Conference Table', category:'Tables',         defW:5, defH:3, ...crop('conference-48', 0,  2, 5, 3) },
+  { name:'Coffee Table',   category:'Tables',           defW:2, defH:1, ...crop('living-room-48',2,  4, 2, 1) },
+  // Plants
+  { name:'Large Plant',    category:'Plants',           defW:2, defH:2, ...crop('living-room-48',10, 0, 2, 2) },
+  { name:'Potted Plant',   category:'Plants',           defW:1, defH:2, ...crop('generic-48',    0, 18, 1, 2) },
+  // Storage
+  { name:'Bookshelf',      category:'Storage',          defW:2, defH:3, ...crop('generic-48',    0,  8, 2, 3) },
+  { name:'Library Shelf',  category:'Storage',          defW:3, defH:3, ...crop('classroom-48',  0, 10, 3, 3) },
+  { name:'Filing Cabinet', category:'Storage',          defW:1, defH:2, ...crop('generic-48',    4, 41, 1, 2) },
+  { name:'Wall Shelf',     category:'Storage',          defW:2, defH:3, ...crop('generic-48',    2,  8, 2, 3) },
+  // Tech
+  { name:'Monitor',        category:'Tech & Screens',   defW:4, defH:2, ...crop('generic-48',    4, 13, 4, 2) },
+  { name:'Whiteboard',     category:'Boards & Signs',   defW:3, defH:2, ...crop('conference-48', 10, 0, 3, 2) },
+  { name:'Chalkboard',     category:'Boards & Signs',   defW:3, defH:2, ...crop('classroom-48',  4,  2, 3, 2) },
+  // Decor
+  { name:'Area Rug',       category:'Decor',            defW:3, defH:4, ...crop('generic-48',    1, 22, 3, 4) },
+  { name:'Floor Lamp',     category:'Decor',            defW:1, defH:2, ...crop('living-room-48',9,  4, 1, 2) },
+  // Film Studio
+  { name:'Film Camera',    category:'Film Studio',      defW:2, defH:3, ...crop('film-studio-48',0,  0, 2, 3) },
+  { name:'Studio Light',   category:'Film Studio',      defW:2, defH:3, ...crop('film-studio-48',2,  0, 2, 3) },
+  { name:'Clapboard',      category:'Film Studio',      defW:2, defH:1, ...crop('film-studio-48',4,  0, 2, 1) },
+  { name:'Studio Monitor', category:'Film Studio',      defW:2, defH:2, ...crop('film-studio-48',10, 4, 2, 2) },
+];
+
+// ── Combinations (Desk + Chair side by side) ─────────────────────────────────
+const COMBOS = [
+  { name:'Wood Desk',      desk: CATALOG[0], chair: CATALOG[4] },
+  { name:'Long Wood Desk', desk: CATALOG[1], chair: CATALOG[4] },
+  { name:'Study Desk',     desk: CATALOG[2], chair: CATALOG[4] },
+  { name:'Conference',     desk: CATALOG[9], chair: CATALOG[5] },
+];
+
+// ── Image loading ────────────────────────────────────────────────────────────
+const loadedSheets = {};
+async function loadSheet(sheetId) {
+  if (loadedSheets[sheetId]) return loadedSheets[sheetId];
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { loadedSheets[sheetId] = img; resolve(img); };
+    img.onerror = reject;
+    img.src = SHEETS[sheetId];
+    img.crossOrigin = 'anonymous';
+  });
+}
+
+// ── Draw a piece onto a canvas ────────────────────────────────────────────────
+const DISPLAY_SCALE = 3; // render at 3× for clarity
+
+function drawPiece(canvas, piece, alpha=1) {
+  const dispW = piece.cols * T * (DISPLAY_SCALE / 1);
+  const dispH = piece.rows * T * (DISPLAY_SCALE / 1);
+  canvas.width  = dispW;
+  canvas.height = dispH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const sheet = loadedSheets[piece.sheetId];
+  if (!sheet) return;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(sheet, piece.sx, piece.sy, piece.sw, piece.sh, 0, 0, dispW, dispH);
+}
+
+// ── Build the combo panels ───────────────────────────────────────────────────
+async function buildCombos() {
+  const grid = document.getElementById('combo-grid');
+
+  // Load all needed sheets first
+  const needed = new Set(COMBOS.flatMap(c => [c.desk.sheetId, c.chair.sheetId]));
+  await Promise.all([...needed].map(loadSheet));
+
+  for (const combo of COMBOS) {
+    const { desk, chair } = combo;
+
+    // Desk alone
+    const deskCard = makeCombo(`${combo.name}`, 'Desk alone', desk);
+    grid.appendChild(deskCard);
+
+    // Chair alone
+    const chairCard = makeCombo('', 'Chair alone', chair);
+    grid.appendChild(chairCard);
+
+    // Desk + chair together
+    const bothCard = document.createElement('div');
+    bothCard.className = 'combo-card';
+    const bothName = document.createElement('div');
+    bothName.className = 'combo-name';
+    bothName.textContent = `${combo.name} Set`;
+    const bothCanvas = document.createElement('canvas');
+    const totalCols = desk.cols + chair.cols;
+    const maxRows = Math.max(desk.rows, chair.rows);
+    bothCanvas.width  = totalCols * T * DISPLAY_SCALE;
+    bothCanvas.height = maxRows * T * DISPLAY_SCALE;
+    const ctx = bothCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    // Draw desk on left
+    const ds = loadedSheets[desk.sheetId];
+    ctx.drawImage(ds, desk.sx, desk.sy, desk.sw, desk.sh, 0, 0, desk.cols*T*DISPLAY_SCALE, desk.rows*T*DISPLAY_SCALE);
+    // Draw chair on right
+    const cs = loadedSheets[chair.sheetId];
+    const chairOffsetX = desk.cols * T * DISPLAY_SCALE;
+    const chairOffsetY = (maxRows - chair.rows) * T * DISPLAY_SCALE;
+    ctx.drawImage(cs, chair.sx, chair.sy, chair.sw, chair.sh, chairOffsetX, chairOffsetY, chair.cols*T*DISPLAY_SCALE, chair.rows*T*DISPLAY_SCALE);
+    const bothLabel = document.createElement('div');
+    bothLabel.className = 'combo-label';
+    bothLabel.textContent = `Together`;
+    bothCard.appendChild(bothName);
+    bothCard.appendChild(bothCanvas);
+    bothCard.appendChild(bothLabel);
+    grid.appendChild(bothCard);
+
+    // Separator gap
+    const sep = document.createElement('div');
+    sep.style.width = '1px';
+    sep.style.background = 'rgba(59,130,246,0.2)';
+    sep.style.alignSelf = 'stretch';
+    grid.appendChild(sep);
+  }
+
+  document.getElementById('combos-section').style.display = '';
+}
+
+function makeCombo(title, label, piece) {
+  const card = document.createElement('div');
+  card.className = 'combo-card';
+  if (title) {
+    const n = document.createElement('div');
+    n.className = 'combo-name';
+    n.textContent = title;
+    card.appendChild(n);
+  }
+  const c = document.createElement('canvas');
+  drawPiece(c, piece);
+  card.appendChild(c);
+  const l = document.createElement('div');
+  l.className = 'combo-label';
+  l.textContent = label;
+  card.appendChild(l);
+  return card;
+}
+
+// ── Build the catalog ────────────────────────────────────────────────────────
+async function buildCatalog() {
+  const catalog = document.getElementById('catalog');
+
+  // Group by category
+  const categories = {};
+  for (const item of CATALOG) {
+    (categories[item.category] ??= []).push(item);
+  }
+
+  // Load all sheets needed
+  const needed = new Set(CATALOG.map(i => i.sheetId));
+  await Promise.all([...needed].map(loadSheet));
+
+  for (const [cat, items] of Object.entries(categories)) {
+    const section = document.createElement('div');
+    section.className = 'category-section';
+    const title = document.createElement('div');
+    title.className = 'category-title';
+    title.textContent = cat;
+    section.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'furniture-grid';
+
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'furniture-card';
+
+      const c = document.createElement('canvas');
+      drawPiece(c, item);
+      card.appendChild(c);
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = item.name;
+      card.appendChild(name);
+
+      const dims = document.createElement('div');
+      dims.className = 'dims';
+      dims.textContent = `${item.defW}×${item.defH} tiles`;
+      card.appendChild(dims);
+
+      grid.appendChild(card);
+    }
+
+    section.appendChild(grid);
+    catalog.appendChild(section);
+  }
+}
+
+async function init() {
+  try {
+    const statusEl = document.getElementById('status');
+    await buildCombos();
+    statusEl.textContent = '✅ All furniture loaded — drag any piece from the Decorate Mode catalog to place it in the offices';
+    statusEl.style.color = '#34d399';
+    await buildCatalog();
+  } catch (err) {
+    document.getElementById('status').textContent = '❌ Error loading sprites: ' + err.message;
+    document.getElementById('status').style.color = '#f87171';
+    console.error(err);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

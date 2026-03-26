@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Agentation } from 'agentation';
 import { useChatStore } from '@/store/chatStore';
 import { useCollaborationStore } from '@/store/collaborationStore';
 import { useDealStore } from '@/store/dealStore';
@@ -20,7 +21,7 @@ import { OfficeCanvas } from '@/components/canvas/OfficeCanvas';
 import { RoomLabel } from '@/components/canvas/RoomLabel';
 import { ZoomControls } from '@/components/canvas/ZoomControls';
 import { EditorToolbar } from '@/components/canvas/EditorToolbar';
-import { useEditorStore } from '@/store/editorStore';
+
 import { MigrationPrompt } from '@/components/deal/MigrationPrompt';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import type { AgentId } from '@/types/agent';
@@ -294,8 +295,6 @@ function App() {
               <RoomLabel />
             <ZoomControls />
 
-            {/* Edit Layout button (hidden in editor mode) */}
-            <EditLayoutButton />
 
             {/* Desk drop zone overlay */}
             {isDeskDragOver && (
@@ -343,6 +342,9 @@ function App() {
       {/* Persona Builder overlay */}
       <PersonaBuilderOverlay />
 
+      {/* Agentation — visual annotation tool (dev only) */}
+      {import.meta.env.DEV && <Agentation />}
+
       {/* File Manager modal */}
       {fileMgrAgent && (
         <FileCabinetModal
@@ -358,24 +360,5 @@ function App() {
   );
 }
 
-// ── Edit Layout Button ──────────────────────────────────────────────────────
-
-function EditLayoutButton() {
-  const editorMode = useEditorStore((s) => s.editorMode);
-  const toggleEditorMode = useEditorStore((s) => s.toggleEditorMode);
-
-  if (editorMode) return null;
-
-  return (
-    <button
-      onClick={toggleEditorMode}
-      style={{ position: 'absolute', bottom: 56, left: 12, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: 'rgba(21,26,36,0.8)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.33)', cursor: 'pointer' }}
-      title="Edit office layout"
-    >
-      <span>✏️</span>
-      Edit Layout
-    </button>
-  );
-}
 
 export default App;

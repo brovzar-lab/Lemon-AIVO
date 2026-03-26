@@ -22,7 +22,7 @@ import { useOfficeStore } from '@/store/officeStore';
 import { getAudioManager } from './audioManager';
 import { useActivityStore } from '@/store/activityStore';
 import { getAgent } from '@/config/agents';
-import { interruptIdleBehavior } from './idleBehaviorManager';
+import { interruptIdleBehavior, resumeIdleBehavior } from './idleBehaviorManager';
 import { collaboratingAgents } from '@/store/collaborationStore';
 import type { AgentId } from '@/types/agent';
 
@@ -318,11 +318,10 @@ export function gatherAgentsToWarRoom(tileMap: TileType[][]): Promise<void> {
   for (const id of dispersalTimeoutIds) clearTimeout(id);
   dispersalTimeoutIds = [];
 
-  // Suspend idle behaviors for all agents so tickAgentBehavior() cannot override
-  // the 'walk' state set by startWalk() below (desk-typing/resting cases set
-  // ch.state = 'work'/'idle' every tick, killing the walk immediately).
+  // Suspend idle behaviors with noHomeWalk=true so agents aren't redirected
+  // to their desk just before being told to walk to their boardroom seat.
   for (const agentId of WAR_ROOM_AGENT_IDS) {
-    interruptIdleBehavior(agentId);
+    interruptIdleBehavior(agentId, true);
   }
 
   // Log to activity feed
@@ -334,10 +333,11 @@ export function gatherAgentsToWarRoom(tileMap: TileType[][]): Promise<void> {
   }
 
   return new Promise((resolve) => {
-    // Walk BILLY to his seat at the head of the table
+    // Walk BILLY to his head-of-table seat with a brief delay so the path
+    // corridors are clear (agents starting to walk don't block BFS momentarily)
     const billySeat = WAR_ROOM_SEATS['billy'];
     if (billySeat) {
-      startWalk('billy', billySeat.col, billySeat.row, tileMap);
+      setTimeout(() => startWalk('billy', billySeat.col, billySeat.row, tileMap), 200);
     }
 
     WAR_ROOM_AGENT_IDS.forEach((agentId, index) => {
@@ -392,6 +392,9 @@ export function disperseAgentsToOffices(tileMap: TileType[][]): void {
       if (room) {
         startWalk(agentId, room.seatTile.col, room.seatTile.row, tileMap);
       }
+      // Resume idle behavior after agent starts walking home so the office
+      // feels alive again and the resume check in tickIdleBehaviors can fire.
+      resumeIdleBehavior(agentId);
     }, delay);
     dispersalTimeoutIds.push(id);
   });

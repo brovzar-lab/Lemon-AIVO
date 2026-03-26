@@ -30,17 +30,20 @@ export function LeftPanel() {
     return () => clearInterval(id);
   }, []);
 
-  // Compute stats
+  // Compute stats from real agent status values.
+  // 'thinking' = AI is streaming a reply (Meeting).
+  // 'needs-attention' = agent pinged user (Idle).
+  // 'idle' = default resting state (Idle).
   const stats = { working: 0, idle: 0, meeting: 0 };
   AGENT_IDS.forEach((id) => {
     const s = agentStatuses[id] as AgentStatus | undefined;
     if (s === 'thinking') stats.meeting++;
     else if (s === 'needs-attention') stats.idle++;
-    else stats.working++;
+    else stats.idle++; // 'idle' (default) → Idle
   });
 
   return (
-    <aside className="panel panel-left">
+    <aside data-testid="left-panel" className="panel panel-left">
       {/* Header */}
       <div style={{
         padding: '14px 12px 8px',

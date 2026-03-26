@@ -47,7 +47,6 @@ export interface OfficeState {
   initializeCharacters: () => void;
 }
 
-const billyRoom = ROOMS.find((r) => r.id === 'billy')!;
 
 export const useOfficeStore = create<OfficeState>((set) => ({
   // Initialize rooms from layout
@@ -55,18 +54,19 @@ export const useOfficeStore = create<OfficeState>((set) => ({
   activeRoomId: 'billy',
   targetRoomId: null,
 
-  // BILLY starts at his office seat
-  billyTileCol: billyRoom.seatTile.col,
-  billyTileRow: billyRoom.seatTile.row,
+
+  // BILLY starts at his exec office seat
+  billyTileCol: ROOMS.find((r) => r.id === 'billy')?.seatTile.col ?? 22,
+  billyTileRow: ROOMS.find((r) => r.id === 'billy')?.seatTile.row ?? 8,
 
   // Camera defaults
   camera: createCamera(),
-  zoomLevel: 2,
+  zoomLevel: 1,
 
   // Characters initialized empty, populated via initializeCharacters()
   characters: [],
 
-  // All 5 agents start idle
+  // All agents start idle
   agentStatuses: {
     patrik: 'idle',
     marcos: 'idle',
@@ -99,29 +99,21 @@ export const useOfficeStore = create<OfficeState>((set) => ({
     set(() => {
       const chars: Character[] = [];
 
-      // BILLY at his seat
-      chars.push(
-        createCharacter(
-          'billy',
-          billyRoom.seatTile.col,
-          billyRoom.seatTile.row,
-        ),
-      );
-
-      // 5 agents at their respective seats
-      const agentIds = ['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie'];
-      for (const agentId of agentIds) {
-        const room = ROOMS.find((r) => r.id === agentId);
+      // All characters spawn at their own office desk seats.
+      // They only walk to the boardroom when BILLY visits the war-room
+      // (gatherAgentsToWarRoom in characters.ts handles this automatically).
+      const allIds = ['billy', 'patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie'];
+      for (const id of allIds) {
+        const room = ROOMS.find((r) => r.id === id);
         if (room) {
-          chars.push(
-            createCharacter(agentId, room.seatTile.col, room.seatTile.row),
-          );
+          chars.push(createCharacter(id, room.seatTile.col, room.seatTile.row));
         }
       }
 
       return { characters: chars };
     }),
 }));
+
 
 function createCharacter(
   id: string,

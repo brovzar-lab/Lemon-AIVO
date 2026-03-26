@@ -34,6 +34,7 @@ export function DealCard({ deal, isActive, agentActivity, onSelect }: DealCardPr
 
   return (
     <div
+      data-testid="deal-card"
       onClick={onSelect}
       style={{
         position: 'relative',

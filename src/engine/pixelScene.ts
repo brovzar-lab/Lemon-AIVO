@@ -4,8 +4,21 @@
  */
 import { P } from './palette';
 import * as S from './pixelSprites';
+import { useEditorStore } from '@/store/editorStore';
 
 import type { RoomRect, AgentAppearance } from './pixelSprites';
+
+// Agent accent colors for room headers
+const ROOM_ACCENTS: Record<string, string> = {
+  isaac:   '#60a5fa', // blue — developer
+  billy:   '#fbbf24', // gold — CEO
+  patrik:  '#34d399', // teal — CFO
+  marcos:  '#a78bfa', // purple — lawyer
+  sandra:  '#f472b6', // pink — line producer
+  charlie: '#fb923c', // orange — designer
+  wendy:   '#c084fc', // purple — coach
+  board:   '#e2e8f0', // white — boardroom
+};
 // ═══════════════════════════════════════════
 // Layout constants — room grid (1280×912 native)
 // ═══════════════════════════════════════════
@@ -43,8 +56,8 @@ export const AGENTS: Record<string, AgentAppearance> = {
   patrik:  { name: 'PATRIK',  role: 'CFO',               hair: 'hairBlack',  shirt: 'shirtGreen', status: 'working' },
   marcos:  { name: 'MARCOS',  role: 'LAWYER',            hair: 'hairBlack',  shirt: 'shirtBlue',  status: 'idle' },
   sandra:  { name: 'SANDRA',  role: 'LINE PRODUCER',     hair: 'hairRed',    shirt: 'shirtGreen', status: 'working' },
-  charlie: { name: 'CHARLIE', role: 'DESIGNER',          hair: 'hairBlonde', shirt: 'shirtOrange', status: 'idle' },
-  wendy:   { name: 'WENDY',   role: 'PERFORMANCE COACH', hair: 'hairBrown',  shirt: 'shirtPurple', status: 'meeting' },
+  charlie: { name: 'CHARLIE', role: 'MARKETING',    hair: 'hairBlonde', shirt: 'shirtOrange', status: 'idle' },
+  wendy:   { name: 'WENDY',   role: 'COACH',         hair: 'hairBrown',  shirt: 'shirtPurple', status: 'meeting' },
 };
 
 // ═══════════════════════════════════════════
@@ -55,141 +68,142 @@ function drawOffice(ctx: CanvasRenderingContext2D, key: string, frame: number): 
   const a = AGENTS[key];
   if (!r || !a) return;
 
+  // Visibility helper — returns true if this piece has NOT been hidden by the user
+  const hidden = useEditorStore.getState().hiddenHandDrawn;
+  const vis = (id: string) => !hidden.has(`${key}.${id}`);
+
   S.drawRoomBase(ctx, r, P.wallTeal, P.floorWood);
   const wallH = Math.round(r.h * 0.32);
   const floorY = r.y + wallH;
 
   // ─── Isaac (Development — dual monitors, messy desk) ───
   if (key === 'isaac') {
-    S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
-    S.drawWallArt(ctx, r.x + 84, r.y + 16, 28, 20);
-    S.drawClock(ctx, r.x + 124, r.y + 16, frame);
-    S.drawBookshelf(ctx, r.x + 160, r.y + 8);
-    S.drawDesk(ctx, r.x + 20, floorY + 36, 88, 28, 'right');
-    S.drawMonitor(ctx, r.x + 32, floorY + 8);
-    S.drawMonitor(ctx, r.x + 64, floorY + 8, P.screenGreen);
-    S.drawMug(ctx, r.x + 96, floorY + 40, P.shirtBlue);
-    S.drawChair(ctx, r.x + 48, floorY + 72);
-    // Real game characters (Layer 4) handle agent rendering
-    // S.drawSeatedChar(ctx, r.x + 44, floorY + 48, a, frame, key);
-    S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 8);
-    S.drawPlant(ctx, r.x + r.w - 32, floorY + 76, 1);
-    S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 120);
+    if (vis('window'))         S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
+    if (vis('wallArt'))        S.drawWallArt(ctx, r.x + 84, r.y + 16, 28, 20);
+    if (vis('clock'))          S.drawClock(ctx, r.x + 124, r.y + 16, frame);
+    if (vis('bookshelf'))      S.drawBookshelf(ctx, r.x + 160, r.y + 8);
+    if (vis('desk'))           S.drawDesk(ctx, r.x + 20, floorY + 36, 88, 28, 'right');
+    if (vis('monitor1'))       S.drawMonitor(ctx, r.x + 32, floorY + 8);
+    if (vis('monitor2'))       S.drawMonitor(ctx, r.x + 64, floorY + 8, P.screenGreen);
+    if (vis('mug'))            S.drawMug(ctx, r.x + 96, floorY + 40, P.shirtBlue);
+    if (vis('chair'))          S.drawChair(ctx, r.x + 48, floorY + 72);
+    if (vis('filingCabinet'))  S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 8);
+    if (vis('fileTable'))      S.drawFileTable(ctx, r.x + r.w - 68, floorY + 72);
+    if (vis('plant'))          S.drawPlant(ctx, r.x + r.w - 32, floorY + 76, 1);
+    if (vis('trashCan'))       S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 120);
   }
 
   // ─── Billy (CEO — executive desk, big windows, plant pair) ───
   if (key === 'billy') {
-    S.drawWindow(ctx, r.x + 48, r.y + 12, 52, 40);
-    S.drawWindow(ctx, r.x + r.w - 108, r.y + 12, 52, 40);
-    S.drawWallArt(ctx, r.x + r.w / 2 - 16, r.y + 12, 32, 24);
-    S.drawClock(ctx, r.x + r.w / 2 + 28, r.y + 16, frame);
-    S.drawBookshelf(ctx, r.x + 12, r.y + 8);
-    S.drawDesk(ctx, r.x + r.w / 2 - 64, floorY + 32, 128, 32, 'right');
-    S.drawMonitor(ctx, r.x + r.w / 2 - 16, floorY + 4);
-    S.drawMug(ctx, r.x + r.w / 2 + 24, floorY + 40, P.textWhite);
-    S.drawChair(ctx, r.x + r.w / 2 - 8, floorY + 72);
-    // S.drawSeatedChar(ctx, r.x + r.w / 2 - 12, floorY + 48, a, frame, key);
-    S.drawPlant(ctx, r.x + 12, floorY + 12, 2);
-    S.drawPlant(ctx, r.x + r.w - 40, floorY + 12, 2);
-    S.drawFilingCabinet(ctx, r.x + r.w - 44, floorY + 68);
-    S.drawTrashCan(ctx, r.x + r.w / 2 + 60, floorY + 100);
+    if (vis('window1'))        S.drawWindow(ctx, r.x + 48, r.y + 12, 52, 40);
+    if (vis('window2'))        S.drawWindow(ctx, r.x + r.w - 108, r.y + 12, 52, 40);
+    if (vis('wallArt'))        S.drawWallArt(ctx, r.x + r.w / 2 - 16, r.y + 12, 32, 24);
+    if (vis('clock'))          S.drawClock(ctx, r.x + r.w / 2 + 28, r.y + 16, frame);
+    if (vis('bookshelf'))      S.drawBookshelf(ctx, r.x + 12, r.y + 8);
+    if (vis('desk'))           S.drawDesk(ctx, r.x + r.w / 2 - 64, floorY + 32, 128, 32, 'right');
+    if (vis('monitor'))        S.drawMonitor(ctx, r.x + r.w / 2 - 16, floorY + 4);
+    if (vis('mug'))            S.drawMug(ctx, r.x + r.w / 2 + 24, floorY + 40, P.textWhite);
+    if (vis('chair'))          S.drawChair(ctx, r.x + r.w / 2 - 8, floorY + 72);
+    if (vis('plant1'))         S.drawPlant(ctx, r.x + 12, floorY + 12, 2);
+    if (vis('plant2'))         S.drawPlant(ctx, r.x + r.w - 40, floorY + 12, 2);
+    if (vis('fileTable'))      S.drawFileTable(ctx, r.x + 56, floorY + 72);
+    if (vis('filingCabinet'))  S.drawFilingCabinet(ctx, r.x + r.w - 44, floorY + 68);
+    if (vis('trashCan'))       S.drawTrashCan(ctx, r.x + r.w / 2 + 60, floorY + 100);
   }
 
   // ─── Patrik (CFO — bookshelves, organized) ───
   if (key === 'patrik') {
-    S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
-    S.drawBookshelf(ctx, r.x + 12, r.y + 8);
-    S.drawBookshelf(ctx, r.x + 64, r.y + 8);
-    S.drawClock(ctx, r.x + 120, r.y + 16, frame);
-    S.drawDesk(ctx, r.x + r.w - 124, floorY + 36, 88, 28, 'left');
-    S.drawMonitor(ctx, r.x + r.w - 104, floorY + 8);
-    S.drawMug(ctx, r.x + r.w - 120, floorY + 40, P.shirtGreen);
-    S.drawChair(ctx, r.x + r.w - 88, floorY + 72);
-    // S.drawSeatedChar(ctx, r.x + r.w - 92, floorY + 48, a, frame, key);
-    S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 80);
-    S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 8);
-    S.drawPlant(ctx, r.x + 16, floorY + 100, 1);
+    if (vis('window'))          S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
+    if (vis('bookshelf1'))      S.drawBookshelf(ctx, r.x + 12, r.y + 8);
+    if (vis('bookshelf2'))      S.drawBookshelf(ctx, r.x + 64, r.y + 8);
+    if (vis('clock'))           S.drawClock(ctx, r.x + 120, r.y + 16, frame);
+    if (vis('desk'))            S.drawDesk(ctx, r.x + r.w - 124, floorY + 36, 88, 28, 'left');
+    if (vis('monitor'))         S.drawMonitor(ctx, r.x + r.w - 104, floorY + 8);
+    if (vis('mug'))             S.drawMug(ctx, r.x + r.w - 120, floorY + 40, P.shirtGreen);
+    if (vis('chair'))           S.drawChair(ctx, r.x + r.w - 88, floorY + 72);
+    if (vis('filingCabinet1'))  S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 80);
+    if (vis('filingCabinet2'))  S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 8);
+    if (vis('fileTable'))       S.drawFileTable(ctx, r.x + 16, floorY + 72);
+    if (vis('plant'))           S.drawPlant(ctx, r.x + 16, floorY + 100, 1);
   }
 
   // ─── Marcos (Lawyer — lots of books, framed certificates) ───
   if (key === 'marcos') {
-    S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
-    S.drawWallArt(ctx, r.x + 84, r.y + 16, 24, 20);
-    S.drawWallArt(ctx, r.x + 116, r.y + 16, 24, 20);
-    S.drawBookshelf(ctx, r.x + 160, r.y + 8);
-    S.drawBookshelf(ctx, r.x + 212, r.y + 8);
-    S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
-    S.drawDesk(ctx, r.x + 20, floorY + 48, 80, 28, 'right');
-    S.drawMonitor(ctx, r.x + 36, floorY + 20);
-    S.drawMug(ctx, r.x + 72, floorY + 52, P.shirtRed);
-    S.drawChair(ctx, r.x + 44, floorY + 84);
-    // S.drawSeatedChar(ctx, r.x + 40, floorY + 60, a, frame, key);
-    S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 20);
-    S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 76);
-    S.drawPlant(ctx, r.x + 8, floorY + 160, 1);
-    S.drawTrashCan(ctx, r.x + 124, floorY + 160);
+    if (vis('window'))          S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
+    if (vis('wallArt1'))        S.drawWallArt(ctx, r.x + 84, r.y + 16, 24, 20);
+    if (vis('wallArt2'))        S.drawWallArt(ctx, r.x + 116, r.y + 16, 24, 20);
+    if (vis('bookshelf1'))      S.drawBookshelf(ctx, r.x + 160, r.y + 8);
+    if (vis('bookshelf2'))      S.drawBookshelf(ctx, r.x + 212, r.y + 8);
+    if (vis('clock'))           S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
+    if (vis('desk'))            S.drawDesk(ctx, r.x + 20, floorY + 48, 80, 28, 'right');
+    if (vis('monitor'))         S.drawMonitor(ctx, r.x + 36, floorY + 20);
+    if (vis('mug'))             S.drawMug(ctx, r.x + 72, floorY + 52, P.shirtRed);
+    if (vis('chair'))           S.drawChair(ctx, r.x + 44, floorY + 84);
+    if (vis('filingCabinet1'))  S.drawFilingCabinet(ctx, r.x + 12, floorY + 20);
+    if (vis('filingCabinet2'))  S.drawFilingCabinet(ctx, r.x + 12, floorY + 76);
+    if (vis('fileTable'))       S.drawFileTable(ctx, r.x + r.w - 40, floorY + 108);
+    if (vis('plant'))           S.drawPlant(ctx, r.x + 8, floorY + 160, 1);
+    if (vis('trashCan'))        S.drawTrashCan(ctx, r.x + 124, floorY + 160);
   }
 
   // ─── Sandra (Line Producer — organized, whiteboards) ───
   if (key === 'sandra') {
-    S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
-    S.drawWhiteboard(ctx, r.x + 16, r.y + 12, 56, 40);
-    S.drawBookshelf(ctx, r.x + 88, r.y + 8);
-    S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
-    S.drawDesk(ctx, r.x + r.w - 116, floorY + 48, 80, 28, 'left');
-    S.drawMonitor(ctx, r.x + r.w - 96, floorY + 20);
-    S.drawMug(ctx, r.x + r.w - 56, floorY + 52, P.bookYellow);
-    S.drawChair(ctx, r.x + r.w - 84, floorY + 84);
-    // S.drawSeatedChar(ctx, r.x + r.w - 88, floorY + 60, a, frame, key);
-    S.drawFilingCabinet(ctx, r.x + 12, floorY + 20);
-    S.drawFilingCabinet(ctx, r.x + 12, floorY + 76);
-    S.drawPlant(ctx, r.x + r.w - 32, floorY + 160, 1);
-    S.drawTrashCan(ctx, r.x + 52, floorY + 160);
+    if (vis('window'))          S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
+    if (vis('whiteboard'))      S.drawWhiteboard(ctx, r.x + 16, r.y + 12, 56, 40);
+    if (vis('bookshelf'))       S.drawBookshelf(ctx, r.x + 88, r.y + 8);
+    if (vis('clock'))           S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
+    if (vis('desk'))            S.drawDesk(ctx, r.x + r.w - 116, floorY + 48, 80, 28, 'left');
+    if (vis('monitor'))         S.drawMonitor(ctx, r.x + r.w - 96, floorY + 20);
+    if (vis('mug'))             S.drawMug(ctx, r.x + r.w - 56, floorY + 52, P.bookYellow);
+    if (vis('chair'))           S.drawChair(ctx, r.x + r.w - 84, floorY + 84);
+    if (vis('filingCabinet1'))  S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 20);
+    if (vis('filingCabinet2'))  S.drawFilingCabinet(ctx, r.x + r.w - 40, floorY + 76);
+    if (vis('fileTable'))       S.drawFileTable(ctx, r.x + 12, floorY + 108);
+    if (vis('plant'))           S.drawPlant(ctx, r.x + r.w - 32, floorY + 160, 1);
+    if (vis('trashCan'))        S.drawTrashCan(ctx, r.x + 52, floorY + 160);
   }
 
-  // ─── Charlie (Designer — art on walls, drawing table, colorful) ───
+  // ─── Charlie (Marketing — art on walls, drawing table, colorful) ───
   if (key === 'charlie') {
-    S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
-    S.drawWallArt(ctx, r.x + 88, r.y + 16, 36, 28);
-    S.drawWallArt(ctx, r.x + 136, r.y + 20, 24, 20);
-    S.drawWallArt(ctx, r.x + 172, r.y + 16, 20, 24);
-    S.drawTable(ctx, r.x + 120, floorY + 28, 92, 44);
-    S.drawDesk(ctx, r.x + 20, floorY + 32, 72, 24, 'right');
-    S.drawMonitor(ctx, r.x + 32, floorY + 8, '#c090d0');
-    S.drawMug(ctx, r.x + 72, floorY + 36, P.shirtOrange);
-    S.drawChair(ctx, r.x + 44, floorY + 64);
-    // S.drawSeatedChar(ctx, r.x + 40, floorY + 40, a, frame, key);
-    S.drawPlant(ctx, r.x + r.w - 32, floorY + 12, 1);
-    S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 104);
+    if (vis('window'))          S.drawWindow(ctx, r.x + 20, r.y + 12, 48, 40);
+    if (vis('wallArt1'))        S.drawWallArt(ctx, r.x + 88, r.y + 16, 36, 28);
+    if (vis('wallArt2'))        S.drawWallArt(ctx, r.x + 136, r.y + 20, 24, 20);
+    if (vis('wallArt3'))        S.drawWallArt(ctx, r.x + 172, r.y + 16, 20, 24);
+    if (vis('table'))           S.drawTable(ctx, r.x + 120, floorY + 28, 92, 44);
+    if (vis('desk'))            S.drawDesk(ctx, r.x + 20, floorY + 32, 72, 24, 'right');
+    if (vis('monitor'))         S.drawMonitor(ctx, r.x + 32, floorY + 8, '#c090d0');
+    if (vis('mug'))             S.drawMug(ctx, r.x + 72, floorY + 36, P.shirtOrange);
+    if (vis('chair'))           S.drawChair(ctx, r.x + 44, floorY + 64);
+    if (vis('fileTable'))       S.drawFileTable(ctx, r.x + r.w - 36, floorY + 52);
+    if (vis('plant'))           S.drawPlant(ctx, r.x + r.w - 32, floorY + 12, 1);
+    if (vis('trashCan'))        S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 104);
   }
 
-  // ─── Wendy (Performance Coach — couch, zen plant, whiteboard) ───
+  // ─── Wendy (Coach — couch, zen plant, whiteboard) ───
   if (key === 'wendy') {
-    S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
-    S.drawWhiteboard(ctx, r.x + 16, r.y + 12, 48, 36);
-    S.drawWallArt(ctx, r.x + 76, r.y + 20, 28, 20);
-    S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
-    S.drawDesk(ctx, r.x + r.w - 116, floorY + 32, 80, 28, 'left');
-    S.drawMonitor(ctx, r.x + r.w - 92, floorY + 4);
-    S.drawMug(ctx, r.x + r.w - 112, floorY + 36, P.shirtPurple);
-    S.drawChair(ctx, r.x + r.w - 80, floorY + 68);
-    // S.drawSeatedChar(ctx, r.x + r.w - 84, floorY + 44, a, frame, key);
-    S.drawFilingCabinet(ctx, r.x + 12, floorY + 12);
-    S.drawCouch(ctx, r.x + 76, floorY + 96);
-    S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 104);
-    S.drawPlant(ctx, r.x + r.w - 32, floorY + 100, 2);
+    if (vis('window'))          S.drawWindow(ctx, r.x + r.w - 72, r.y + 12, 48, 40);
+    if (vis('whiteboard'))      S.drawWhiteboard(ctx, r.x + 16, r.y + 12, 48, 36);
+    if (vis('wallArt'))         S.drawWallArt(ctx, r.x + 76, r.y + 20, 28, 20);
+    if (vis('clock'))           S.drawClock(ctx, r.x + r.w - 28, r.y + 20, frame);
+    if (vis('desk'))            S.drawDesk(ctx, r.x + r.w - 116, floorY + 32, 80, 28, 'left');
+    if (vis('monitor'))         S.drawMonitor(ctx, r.x + r.w - 92, floorY + 4);
+    if (vis('mug'))             S.drawMug(ctx, r.x + r.w - 112, floorY + 36, P.shirtPurple);
+    if (vis('chair'))           S.drawChair(ctx, r.x + r.w - 80, floorY + 68);
+    if (vis('filingCabinet'))   S.drawFilingCabinet(ctx, r.x + 12, floorY + 12);
+    if (vis('fileTable'))       S.drawFileTable(ctx, r.x + 36, floorY + 60);
+    if (vis('couch'))           S.drawCouch(ctx, r.x + 76, floorY + 96);
+    if (vis('trashCan'))        S.drawTrashCan(ctx, r.x + r.w - 20, floorY + 104);
+    if (vis('plant'))           S.drawPlant(ctx, r.x + r.w - 32, floorY + 100, 2);
   }
 
-  // Agent name label
-  S.drawLabelBg(ctx, a.name, r.x + r.w / 2, r.y - 20, 10, P.textWhite);
-  S.drawLabel(ctx, a.role, r.x + r.w / 2, r.y - 4, 8, P.textCream);
-
-  // Status indicator
-  S.drawStatusDot(ctx, r.x + r.w - 20, r.y + 12, a.status, frame);
+  // Agent name + role header banner
+  const accent = ROOM_ACCENTS[key] ?? '#fbbf24';
+  S.drawRoomHeader(ctx, a.name, a.role, r.x + r.w / 2, r.y - 6, accent, r.w);
 
   // Room walls with door
   S.drawRoomWalls(ctx, r);
 }
+
 
 // ═══════════════════════════════════════════
 // Boardroom
@@ -198,6 +212,10 @@ function drawBoardroom(ctx: CanvasRenderingContext2D, frame: number): void {
   const r = ROOMS.board;
   if (!r) return;
   const wallH = Math.round(r.h * 0.25);
+
+  // Visibility helper — same pattern as drawOffice
+  const hidden = useEditorStore.getState().hiddenHandDrawn;
+  const vis = (id: string) => !hidden.has(`boardroom.${id}`);
 
   S.rect(ctx, r.x, r.y, r.w, 6, P.border);
   S.rect(ctx, r.x, r.y + 6, r.w, wallH - 6, P.wallTeal);
@@ -219,61 +237,64 @@ function drawBoardroom(ctx: CanvasRenderingContext2D, frame: number): void {
   }
   S.rect(ctx, r.x, fy, r.w, 4, '#1E1C1C');
 
-  S.drawPresScreen(ctx, r.x + 72, r.y + 8, 88, 56);
-  S.drawWhiteboard(ctx, r.x + r.w - 160, r.y + 12, 76, 48);
-  S.drawSconce(ctx, r.x + 36, r.y + 16, frame);
-  S.drawSconce(ctx, r.x + r.w - 44, r.y + 16, frame);
+  if (vis('presScreen'))  S.drawPresScreen(ctx, r.x + 72, r.y + 8, 88, 56);
+  if (vis('whiteboard'))  S.drawWhiteboard(ctx, r.x + r.w - 160, r.y + 12, 76, 48);
+  if (vis('sconceL'))     S.drawSconce(ctx, r.x + 36, r.y + 16, frame);
+  if (vis('sconceR'))     S.drawSconce(ctx, r.x + r.w - 44, r.y + 16, frame);
 
   const fullW = r.w - 200, fullH = r.h - wallH - 100;
   const tw = Math.round(fullW * 0.8), th = Math.round(fullH * 0.8);
   const tx = r.x + 100 + Math.round((fullW - tw) / 2);
   const ty = r.y + wallH + 40 + Math.round((fullH - th) / 2);
-  S.drawBoardTable(ctx, tx, ty, tw, th);
+  if (vis('table'))       S.drawBoardTable(ctx, tx, ty, tw, th);
 
-  // Executive chairs
-  const cBrown = '#5C3A1E';
-  const cDark = '#3A2410';
-  const cSeat = '#6B4828';
+  if (vis('chairs')) {
+    // Executive chairs
+    const cBrown = '#5C3A1E';
+    const cDark = '#3A2410';
+    const cSeat = '#6B4828';
 
-  function execChair(cx: number, cy: number, facing: string): void {
-    if (facing === 'down') {
-      S.rect(ctx, cx - 10, cy - 4, 20, 6, cBrown);
-      S.rect(ctx, cx - 8, cy - 2, 16, 2, cDark);
-      S.rect(ctx, cx - 10, cy + 2, 20, 14, cSeat);
-      S.rect(ctx, cx - 8, cy + 4, 16, 10, cBrown);
-      S.rect(ctx, cx - 12, cy, 4, 16, cDark);
-      S.rect(ctx, cx + 8, cy, 4, 16, cDark);
-    } else if (facing === 'up') {
-      S.rect(ctx, cx - 10, cy, 20, 14, cSeat);
-      S.rect(ctx, cx - 8, cy + 2, 16, 10, cBrown);
-      S.rect(ctx, cx - 10, cy + 14, 20, 6, cBrown);
-      S.rect(ctx, cx - 8, cy + 16, 16, 2, cDark);
-      S.rect(ctx, cx - 12, cy, 4, 18, cDark);
-      S.rect(ctx, cx + 8, cy, 4, 18, cDark);
-    } else if (facing === 'left') {
-      S.rect(ctx, cx, cy - 8, 14, 18, cSeat);
-      S.rect(ctx, cx + 2, cy - 6, 10, 14, cBrown);
-      S.rect(ctx, cx + 14, cy - 10, 6, 22, cBrown);
-      S.rect(ctx, cx + 16, cy - 8, 2, 18, cDark);
-      S.rect(ctx, cx, cy - 10, 14, 4, cDark);
-      S.rect(ctx, cx, cy + 8, 14, 4, cDark);
+    function execChair(cx: number, cy: number, facing: string): void {
+      if (facing === 'down') {
+        S.rect(ctx, cx - 10, cy - 4, 20, 6, cBrown);
+        S.rect(ctx, cx - 8, cy - 2, 16, 2, cDark);
+        S.rect(ctx, cx - 10, cy + 2, 20, 14, cSeat);
+        S.rect(ctx, cx - 8, cy + 4, 16, 10, cBrown);
+        S.rect(ctx, cx - 12, cy, 4, 16, cDark);
+        S.rect(ctx, cx + 8, cy, 4, 16, cDark);
+      } else if (facing === 'up') {
+        S.rect(ctx, cx - 10, cy, 20, 14, cSeat);
+        S.rect(ctx, cx - 8, cy + 2, 16, 10, cBrown);
+        S.rect(ctx, cx - 10, cy + 14, 20, 6, cBrown);
+        S.rect(ctx, cx - 8, cy + 16, 16, 2, cDark);
+        S.rect(ctx, cx - 12, cy, 4, 18, cDark);
+        S.rect(ctx, cx + 8, cy, 4, 18, cDark);
+      } else if (facing === 'left') {
+        S.rect(ctx, cx, cy - 8, 14, 18, cSeat);
+        S.rect(ctx, cx + 2, cy - 6, 10, 14, cBrown);
+        S.rect(ctx, cx + 14, cy - 10, 6, 22, cBrown);
+        S.rect(ctx, cx + 16, cy - 8, 2, 18, cDark);
+        S.rect(ctx, cx, cy - 10, 14, 4, cDark);
+        S.rect(ctx, cx, cy + 8, 14, 4, cDark);
+      }
     }
+
+    for (let i = 0; i < 3; i++) {
+      const ax = tx + 28 + i * Math.floor(tw / 3);
+      execChair(ax, ty - 18, 'down');
+    }
+    for (let i = 0; i < 3; i++) {
+      const ax = tx + 28 + i * Math.floor(tw / 3);
+      execChair(ax, ty + th + 4, 'up');
+    }
+    execChair(tx + tw + 8, ty + th / 2 - 2, 'left');
   }
 
-  for (let i = 0; i < 3; i++) {
-    const ax = tx + 28 + i * Math.floor(tw / 3);
-    execChair(ax, ty - 18, 'down');
-  }
-  for (let i = 0; i < 3; i++) {
-    const ax = tx + 28 + i * Math.floor(tw / 3);
-    execChair(ax, ty + th + 4, 'up');
-  }
-  execChair(tx + tw + 8, ty + th / 2 - 2, 'left');
-
-  S.drawWaterCooler(ctx, r.x + r.w - 28, r.y + r.h - 56);
-  S.drawLabelBg(ctx, 'BOARD ROOM', r.x + r.w / 2, r.y - 20, 12, P.textWhite);
+  if (vis('waterCooler')) S.drawWaterCooler(ctx, r.x + r.w - 28, r.y + r.h - 56);
+  S.drawRoomHeader(ctx, 'BOARD ROOM', 'WAR ROOM', r.x + r.w / 2, r.y - 6, ROOM_ACCENTS['board'] ?? '#e2e8f0', r.w);
   S.drawRoomWalls(ctx, r);
 }
+
 
 // ═══════════════════════════════════════════
 // Hallways

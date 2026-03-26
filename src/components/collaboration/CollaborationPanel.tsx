@@ -146,7 +146,7 @@ export function CollaborationPanel({ onStartNew }: { onStartNew: () => void }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div data-testid="collaboration-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{
         padding: '8px 10px',

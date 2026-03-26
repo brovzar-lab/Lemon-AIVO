@@ -19,7 +19,7 @@ export function MigrationPrompt({ onMigrate, onDismiss }: MigrationPromptProps) 
   useEffect(() => { if (showNameInput) nameRef.current?.focus(); }, [showNameInput]);
 
   return (
-    <div style={{
+    <div data-testid="migration-prompt" style={{
       position: 'fixed', inset: 0, zIndex: 50,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',

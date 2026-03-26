@@ -22,7 +22,7 @@ export function WarRoomMessage({ agentId }: WarRoomMessageProps) {
   if (status === 'idle' && !currentContent) return null;
 
   return (
-    <div style={{
+    <div data-testid="war-room-message" style={{
       paddingLeft: 10,
       paddingTop: 8,
       paddingBottom: 8,

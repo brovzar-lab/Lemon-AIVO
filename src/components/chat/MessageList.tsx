@@ -22,7 +22,7 @@ export function MessageList({ messages, isStreaming, streamingContent, agentName
 
   if (messages.length === 0 && !isStreaming) {
     return (
-      <div className="chat-welcome">
+      <div data-testid="message-list" className="chat-welcome">
         <div className="chat-welcome-icon">💬</div>
         <h3>START A CONVERSATION</h3>
         <p>Send a message to {agentName}</p>
@@ -31,7 +31,7 @@ export function MessageList({ messages, isStreaming, streamingContent, agentName
   }
 
   return (
-    <div className="chat-messages">
+    <div data-testid="message-list" className="chat-messages">
       {messages.map((msg) => (
         <MessageBubble key={msg.id} message={msg} agentName={agentName} />
       ))}

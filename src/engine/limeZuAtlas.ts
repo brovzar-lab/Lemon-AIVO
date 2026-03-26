@@ -4,20 +4,18 @@
  * Maps semantic asset keys to { sheetId, frame } tuples.
  * Sheet IDs reference paths in SHEET_PATHS, loaded at startup by spriteSheet.ts.
  *
- * All environment/furniture coordinates use 16x16 tile grid positions.
- *
- * COORDINATE NOTES (verified via pixel sampling):
- * - Floor sheet style 0 (rows 0-2) is transparent in most bands. Use style 1+ (rows 3+).
- * - Floor center tiles are at col=(band*3+1), row=(style*3+1) within each 3-row group.
- * - Flat wall tiles (Room_Builder_Walls_16x16.png) are used for interior walls.
- * - Generic furniture items: many rows 0-3 positions are transparent (header items).
- *   Solid furniture items start around rows 4-8+.
+ * All environment/furniture coordinates use grid positions.
+ * TILE_SIZE=48 for the 48×48 theme sheets; Room Builder sheets loaded at 16px source
+ * are upscaled at draw time.
  */
 import type { SpriteFrame } from './types';
 import { TILE_SIZE } from './types';
 import { FURNITURE_48_ATLAS_ENTRIES, FURNITURE_48_SHEET_PATHS, FURNITURE_COMPILED_SHEET_PATHS } from './furniture48Catalog';
 
-const T = TILE_SIZE; // 16
+const T = TILE_SIZE; // 48
+
+/** Cell size for sheets that only ship at 16×16 (Room Builder, UI). */
+const T16 = 16;
 
 // ── Sheet Paths ──────────────────────────────────────────────────────────────
 
@@ -26,19 +24,22 @@ const T = TILE_SIZE; // 16
  * 48×48 Singles sheets are NOT listed here — they are lazy-loaded on demand by spriteSheet.ts.
  */
 export const SHEET_PATHS: Record<string, string> = {
-  'generic': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png',
-  'living-room': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png',
-  'classroom': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png',
-  'conference': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/13_Conference_Hall_16x16.png',
-  'film-studio': '/sprites/modern-interiors-paid/1_Interiors/16x16/Theme_Sorter/23_Television_and_Film_Studio.png',
+  // ── 48×48 Theme Sheets (primary, RPG Maker native resolution) ──────────────
+  'generic': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png',
+  'living-room': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/2_LivingRoom_48x48.png',
+  'classroom': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/5_Classroom_and_library_48x48.png',
+  'conference': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/13_Conference_Hall_48x48.png',
+  'film-studio': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/23_Television_and_Film_Studio_48x48.png',
+  // ── 16×16 Room Builder (no 48×48 equivalent available) ─────────────────────
   'floors': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png',
   'walls': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png',
   '3d-walls': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_3d_walls_16x16.png',
   'baseboards': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Baseboards_16x16.png',
   'floor-shadows': '/sprites/modern-interiors-paid/1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floor_Shadows_16x16.png',
+  // ── 16×16 UI (no 48×48 equivalent available) ──────────────────────────────
   'ui': '/sprites/modern-interiors-paid/4_User_Interface_Elements/UI_16x16.png',
   'ui-emotes': '/sprites/modern-interiors-paid/4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png',
-  // 48×48 theme sheets (3× resolution, same grid layout as 16×16 equivalents)
+  // Legacy 48×48 aliases — now identical to primary keys above
   'generic-48':      '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png',
   'living-room-48':  '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/2_LivingRoom_48x48.png',
   'conference-48':   '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/13_Conference_Hall_48x48.png',
@@ -67,6 +68,7 @@ export interface SheetFrame {
 
 /**
  * Create a SheetFrame from grid coordinates.
+ * Uses TILE_SIZE (48px) for sheets at native 48×48 resolution.
  * @param sheetId - Key in SHEET_PATHS
  * @param col - Column index (0-based)
  * @param row - Row index (0-based)
@@ -77,6 +79,17 @@ export function sf(sheetId: string, col: number, row: number, w = 1, h = 1): She
   return {
     sheetId,
     frame: { x: col * T, y: row * T, w: w * T, h: h * T },
+  };
+}
+
+/**
+ * Create a SheetFrame for sheets that remain at 16×16 resolution (Room Builder, UI).
+ * Source coordinates are at 16px cells; the renderer upscales at draw time.
+ */
+function sf16(sheetId: string, col: number, row: number, w = 1, h = 1): SheetFrame {
+  return {
+    sheetId,
+    frame: { x: col * T16, y: row * T16, w: w * T16, h: h * T16 },
   };
 }
 
@@ -109,18 +122,14 @@ export { FURNITURE_COMPILED_SHEET_PATHS };
 //   Furniture/decoration items. Many top-area tiles are transparent.
 //   Best desk items around rows 5, 16, 29-30.
 
-const T48 = 48; // cell size in 48×48 tier sheets
+const T48 = T; // Now identical — kept as alias for backward compat
 
 /**
- * Create a SheetFrame for the 48×48 tier — same col/row layout as sf() but at 48px/cell.
- * The 48×48 sheets are exactly 3× the resolution of their 16×16 counterparts.
- * Sheet IDs: 'generic-48', 'living-room-48', 'conference-48', 'classroom-48', 'film-studio-48'
+ * Create a SheetFrame for 48×48 tier — now identical to sf() since TILE_SIZE=48.
+ * Kept as a named alias for clarity on entries that were originally 48-only.
  */
 function sf48(sheetId: string, col: number, row: number, w = 1, h = 1): SheetFrame {
-  return {
-    sheetId,
-    frame: { x: col * T48, y: row * T48, w: w * T48, h: h * T48 },
-  };
+  return sf(sheetId, col, row, w, h);
 }
 
 export const LIMEZU_ATLAS: Record<string, SheetFrame> = {
@@ -130,150 +139,150 @@ export const LIMEZU_ATLAS: Record<string, SheetFrame> = {
   // 5 bands of 3 cols each. Center tile of each 3×3 block = fill tile.
   // Band centers at cols 1, 4, 7, 10, 13. Styles every 3 rows.
   // Existing selections
-  'floor-office': sf('floors', 9, 31),
-  'floor-warroom': sf('floors', 13, 3),
-  'floor-hallway': sf('floors', 5, 31),
-  'floor-rec': sf('floors', 1, 16),
+  'floor-office': sf16('floors', 9, 31),
+  'floor-warroom': sf16('floors', 13, 3),
+  'floor-hallway': sf16('floors', 5, 31),
+  'floor-rec': sf16('floors', 1, 16),
 
   // Band 0 (cols 0-2, center=1)
-  'floor-b0-white':       sf('floors', 1, 4),
-  'floor-b0-cream':       sf('floors', 1, 7),
-  'floor-b0-yellow':      sf('floors', 1, 10),
-  'floor-b0-gold':        sf('floors', 1, 13),
-  'floor-b0-brown':       sf('floors', 1, 16),
-  'floor-b0-tan':         sf('floors', 1, 19),
-  'floor-b0-sand':        sf('floors', 1, 22),
-  'floor-b0-grey':        sf('floors', 1, 25),
-  'floor-b0-slate':       sf('floors', 1, 28),
-  'floor-b0-wood':        sf('floors', 1, 31),
-  'floor-b0-dark-wood':   sf('floors', 1, 34),
-  'floor-b0-plank':       sf('floors', 1, 37),
+  'floor-b0-white':       sf16('floors', 1, 4),
+  'floor-b0-cream':       sf16('floors', 1, 7),
+  'floor-b0-yellow':      sf16('floors', 1, 10),
+  'floor-b0-gold':        sf16('floors', 1, 13),
+  'floor-b0-brown':       sf16('floors', 1, 16),
+  'floor-b0-tan':         sf16('floors', 1, 19),
+  'floor-b0-sand':        sf16('floors', 1, 22),
+  'floor-b0-grey':        sf16('floors', 1, 25),
+  'floor-b0-slate':       sf16('floors', 1, 28),
+  'floor-b0-wood':        sf16('floors', 1, 31),
+  'floor-b0-dark-wood':   sf16('floors', 1, 34),
+  'floor-b0-plank':       sf16('floors', 1, 37),
 
   // Band 1 (cols 3-5, center=4)
-  'floor-b1-white':       sf('floors', 4, 4),
-  'floor-b1-cream':       sf('floors', 4, 7),
-  'floor-b1-pattern':     sf('floors', 4, 10),
-  'floor-b1-checker':     sf('floors', 4, 13),
-  'floor-b1-brown':       sf('floors', 4, 16),
-  'floor-b1-brick':       sf('floors', 4, 19),
-  'floor-b1-herring':     sf('floors', 4, 22),
-  'floor-b1-stone':       sf('floors', 4, 25),
-  'floor-b1-tile':        sf('floors', 4, 28),
-  'floor-b1-wood':        sf('floors', 4, 31),
-  'floor-b1-dark':        sf('floors', 4, 34),
-  'floor-b1-parquet':     sf('floors', 4, 37),
+  'floor-b1-white':       sf16('floors', 4, 4),
+  'floor-b1-cream':       sf16('floors', 4, 7),
+  'floor-b1-pattern':     sf16('floors', 4, 10),
+  'floor-b1-checker':     sf16('floors', 4, 13),
+  'floor-b1-brown':       sf16('floors', 4, 16),
+  'floor-b1-brick':       sf16('floors', 4, 19),
+  'floor-b1-herring':     sf16('floors', 4, 22),
+  'floor-b1-stone':       sf16('floors', 4, 25),
+  'floor-b1-tile':        sf16('floors', 4, 28),
+  'floor-b1-wood':        sf16('floors', 4, 31),
+  'floor-b1-dark':        sf16('floors', 4, 34),
+  'floor-b1-parquet':     sf16('floors', 4, 37),
 
   // Band 2 (cols 6-8, center=7)
-  'floor-b2-pink':        sf('floors', 7, 4),
-  'floor-b2-rose':        sf('floors', 7, 7),
-  'floor-b2-red':         sf('floors', 7, 10),
-  'floor-b2-orange':      sf('floors', 7, 13),
-  'floor-b2-terra':       sf('floors', 7, 16),
-  'floor-b2-clay':        sf('floors', 7, 19),
-  'floor-b2-mosaic':      sf('floors', 7, 22),
-  'floor-b2-blue-tile':   sf('floors', 7, 25),
-  'floor-b2-diamond':     sf('floors', 7, 28),
-  'floor-b2-marble':      sf('floors', 7, 31),
-  'floor-b2-granite':     sf('floors', 7, 34),
-  'floor-b2-concrete':    sf('floors', 7, 37),
+  'floor-b2-pink':        sf16('floors', 7, 4),
+  'floor-b2-rose':        sf16('floors', 7, 7),
+  'floor-b2-red':         sf16('floors', 7, 10),
+  'floor-b2-orange':      sf16('floors', 7, 13),
+  'floor-b2-terra':       sf16('floors', 7, 16),
+  'floor-b2-clay':        sf16('floors', 7, 19),
+  'floor-b2-mosaic':      sf16('floors', 7, 22),
+  'floor-b2-blue-tile':   sf16('floors', 7, 25),
+  'floor-b2-diamond':     sf16('floors', 7, 28),
+  'floor-b2-marble':      sf16('floors', 7, 31),
+  'floor-b2-granite':     sf16('floors', 7, 34),
+  'floor-b2-concrete':    sf16('floors', 7, 37),
 
   // Band 3 (cols 9-11, center=10)
-  'floor-b3-grey':        sf('floors', 10, 4),
-  'floor-b3-steel':       sf('floors', 10, 7),
-  'floor-b3-silver':      sf('floors', 10, 10),
-  'floor-b3-dark-grey':   sf('floors', 10, 13),
-  'floor-b3-charcoal':    sf('floors', 10, 16),
-  'floor-b3-cement':      sf('floors', 10, 19),
-  'floor-b3-grid':        sf('floors', 10, 22),
-  'floor-b3-checker':     sf('floors', 10, 25),
-  'floor-b3-tile':        sf('floors', 10, 28),
-  'floor-b3-dark-tile':   sf('floors', 10, 31),
-  'floor-b3-cobble':      sf('floors', 10, 34),
-  'floor-b3-industrial':  sf('floors', 10, 37),
+  'floor-b3-grey':        sf16('floors', 10, 4),
+  'floor-b3-steel':       sf16('floors', 10, 7),
+  'floor-b3-silver':      sf16('floors', 10, 10),
+  'floor-b3-dark-grey':   sf16('floors', 10, 13),
+  'floor-b3-charcoal':    sf16('floors', 10, 16),
+  'floor-b3-cement':      sf16('floors', 10, 19),
+  'floor-b3-grid':        sf16('floors', 10, 22),
+  'floor-b3-checker':     sf16('floors', 10, 25),
+  'floor-b3-tile':        sf16('floors', 10, 28),
+  'floor-b3-dark-tile':   sf16('floors', 10, 31),
+  'floor-b3-cobble':      sf16('floors', 10, 34),
+  'floor-b3-industrial':  sf16('floors', 10, 37),
 
   // Band 4 (cols 12-14, center=13)
-  'floor-b4-teal':        sf('floors', 13, 4),
-  'floor-b4-seafoam':     sf('floors', 13, 7),
-  'floor-b4-green':       sf('floors', 13, 10),
-  'floor-b4-olive':       sf('floors', 13, 13),
-  'floor-b4-wood-green':  sf('floors', 13, 16),
-  'floor-b4-aqua':        sf('floors', 13, 19),
-  'floor-b4-sky-tile':    sf('floors', 13, 22),
-  'floor-b4-blue':        sf('floors', 13, 25),
-  'floor-b4-white-tile':  sf('floors', 13, 28),
-  'floor-b4-light-blue':  sf('floors', 13, 31),
-  'floor-b4-pastel':      sf('floors', 13, 34),
-  'floor-b4-mint':        sf('floors', 13, 37),
+  'floor-b4-teal':        sf16('floors', 13, 4),
+  'floor-b4-seafoam':     sf16('floors', 13, 7),
+  'floor-b4-green':       sf16('floors', 13, 10),
+  'floor-b4-olive':       sf16('floors', 13, 13),
+  'floor-b4-wood-green':  sf16('floors', 13, 16),
+  'floor-b4-aqua':        sf16('floors', 13, 19),
+  'floor-b4-sky-tile':    sf16('floors', 13, 22),
+  'floor-b4-blue':        sf16('floors', 13, 25),
+  'floor-b4-white-tile':  sf16('floors', 13, 28),
+  'floor-b4-light-blue':  sf16('floors', 13, 31),
+  'floor-b4-pastel':      sf16('floors', 13, 34),
+  'floor-b4-mint':        sf16('floors', 13, 37),
 
   // ── Walls (Room_Builder_Walls_16x16.png, 32 cols × 40 rows) ────────────────
   // 8 bands of 4 cols each. Each band = a different wall color/style.
   // Row 1 col 1 of each band = solid fill tile for interior mass.
-  'wall-front': sf('walls', 16, 18),
-  'wall-corner-tl': sf('walls', 0, 0),
-  'wall-corner-tr': sf('walls', 3, 0),
-  'wall-side': sf('walls', 0, 1),
-  'wall-top': sf('walls', 1, 1),
+  'wall-front': sf16('walls', 16, 18),
+  'wall-corner-tl': sf16('walls', 0, 0),
+  'wall-corner-tr': sf16('walls', 3, 0),
+  'wall-side': sf16('walls', 0, 1),
+  'wall-top': sf16('walls', 1, 1),
 
   // Wall color bands — solid fill tile (col+1, row 1) of each band
   // Band 0: Light grey/white (cols 0-3)
-  'wall-white':        sf('walls', 1, 1),
+  'wall-white':        sf16('walls', 1, 1),
   // Band 1: Cream/off-white (cols 4-7)
-  'wall-cream':        sf('walls', 5, 1),
+  'wall-cream':        sf16('walls', 5, 1),
   // Band 2: Beige/tan (cols 8-11)
-  'wall-beige':        sf('walls', 9, 1),
+  'wall-beige':        sf16('walls', 9, 1),
   // Band 3: Yellow/warm (cols 12-15)
-  'wall-yellow':       sf('walls', 13, 1),
+  'wall-yellow':       sf16('walls', 13, 1),
   // Band 4: Brown/wood (cols 16-19)
-  'wall-brown':        sf('walls', 17, 1),
+  'wall-brown':        sf16('walls', 17, 1),
   // Band 5: Dark brown (cols 20-23)
-  'wall-dark-brown':   sf('walls', 21, 1),
+  'wall-dark-brown':   sf16('walls', 21, 1),
   // Band 6: Grey (cols 24-27)
-  'wall-grey':         sf('walls', 25, 1),
+  'wall-grey':         sf16('walls', 25, 1),
   // Band 7: Dark grey/charcoal (cols 28-31)
-  'wall-dark-grey':    sf('walls', 29, 1),
+  'wall-dark-grey':    sf16('walls', 29, 1),
 
   // Additional wall rows (different textures per band)
   // Row 5 = brick-like variant
-  'wall-white-brick':      sf('walls', 1, 5),
-  'wall-cream-brick':      sf('walls', 5, 5),
-  'wall-beige-brick':      sf('walls', 9, 5),
-  'wall-yellow-brick':     sf('walls', 13, 5),
-  'wall-brown-brick':      sf('walls', 17, 5),
-  'wall-dark-brown-brick': sf('walls', 21, 5),
-  'wall-grey-brick':       sf('walls', 25, 5),
-  'wall-dark-grey-brick':  sf('walls', 29, 5),
+  'wall-white-brick':      sf16('walls', 1, 5),
+  'wall-cream-brick':      sf16('walls', 5, 5),
+  'wall-beige-brick':      sf16('walls', 9, 5),
+  'wall-yellow-brick':     sf16('walls', 13, 5),
+  'wall-brown-brick':      sf16('walls', 17, 5),
+  'wall-dark-brown-brick': sf16('walls', 21, 5),
+  'wall-grey-brick':       sf16('walls', 25, 5),
+  'wall-dark-grey-brick':  sf16('walls', 29, 5),
 
   // Row 9 = panel/stripe variant
-  'wall-white-panel':      sf('walls', 1, 9),
-  'wall-cream-panel':      sf('walls', 5, 9),
-  'wall-beige-panel':      sf('walls', 9, 9),
-  'wall-yellow-panel':     sf('walls', 13, 9),
-  'wall-brown-panel':      sf('walls', 17, 9),
-  'wall-dark-brown-panel': sf('walls', 21, 9),
-  'wall-grey-panel':       sf('walls', 25, 9),
-  'wall-dark-grey-panel':  sf('walls', 29, 9),
+  'wall-white-panel':      sf16('walls', 1, 9),
+  'wall-cream-panel':      sf16('walls', 5, 9),
+  'wall-beige-panel':      sf16('walls', 9, 9),
+  'wall-yellow-panel':     sf16('walls', 13, 9),
+  'wall-brown-panel':      sf16('walls', 17, 9),
+  'wall-dark-brown-panel': sf16('walls', 21, 9),
+  'wall-grey-panel':       sf16('walls', 25, 9),
+  'wall-dark-grey-panel':  sf16('walls', 29, 9),
 
   // Row 18 = another style variant
-  'wall-white-alt':        sf('walls', 1, 18),
-  'wall-cream-alt':        sf('walls', 5, 18),
-  'wall-beige-alt':        sf('walls', 9, 18),
-  'wall-yellow-alt':       sf('walls', 13, 18),
-  'wall-brown-alt':        sf('walls', 17, 18),
-  'wall-dark-brown-alt':   sf('walls', 21, 18),
-  'wall-grey-alt':         sf('walls', 25, 18),
-  'wall-dark-grey-alt':    sf('walls', 29, 18),
+  'wall-white-alt':        sf16('walls', 1, 18),
+  'wall-cream-alt':        sf16('walls', 5, 18),
+  'wall-beige-alt':        sf16('walls', 9, 18),
+  'wall-yellow-alt':       sf16('walls', 13, 18),
+  'wall-brown-alt':        sf16('walls', 17, 18),
+  'wall-dark-brown-alt':   sf16('walls', 21, 18),
+  'wall-grey-alt':         sf16('walls', 25, 18),
+  'wall-dark-grey-alt':    sf16('walls', 29, 18),
 
   // Legacy 3d-wall aliases — NOT used for rendering, kept to avoid TS errors on old refs
-  'wall-3d-front': sf('walls', 16, 18),
-  'wall-3d-corner-tl': sf('walls', 0, 0),
-  'wall-3d-corner-tr': sf('walls', 3, 0),
-  'wall-3d-side-l': sf('walls', 0, 1),
-  'wall-3d-side-r': sf('walls', 3, 1),
-  'wall-3d-top': sf('walls', 1, 1),
+  'wall-3d-front': sf16('walls', 16, 18),
+  'wall-3d-corner-tl': sf16('walls', 0, 0),
+  'wall-3d-corner-tr': sf16('walls', 3, 0),
+  'wall-3d-side-l': sf16('walls', 0, 1),
+  'wall-3d-side-r': sf16('walls', 3, 1),
+  'wall-3d-top': sf16('walls', 1, 1),
 
   // ── Door ───────────────────────────────────────────────────────────────────
   // Use hallway floor for door tiles (doorways are floor-level walkable gaps)
-  'door': sf('floors', 10, 35),
+  'door': sf16('floors', 10, 35),
 
   // ── Furniture from Generic sheet (1_Generic_16x16.png, 16 cols x 78 rows) ─
   // Coordinates VERIFIED by visual inspection in sprite-debugger at 4× zoom (2026-03-18).
@@ -422,24 +431,24 @@ export const LIMEZU_ATLAS: Record<string, SheetFrame> = {
 
   // ── UI Elements ────────────────────────────────────────────────────────────
   // Emotes sheet: rows 0-3 are sparse/animated frames, rows 4+ are dense static emotes
-  'emote-thinking': sf('ui-emotes', 4, 0),      // thought bubble (verified 15 pixels)
-  'emote-exclamation': sf('ui-emotes', 0, 4),    // exclamation mark
-  'emote-question': sf('ui-emotes', 2, 4),       // question mark
-  'emote-heart': sf('ui-emotes', 4, 4),          // heart
-  'emote-music': sf('ui-emotes', 6, 4),          // music note
-  'emote-stretch': sf('ui-emotes', 8, 4),        // star/sparkle = closest arms-up/celebrate analog
+  'emote-thinking': sf16('ui-emotes', 4, 0),      // thought bubble (verified 15 pixels)
+  'emote-exclamation': sf16('ui-emotes', 0, 4),    // exclamation mark
+  'emote-question': sf16('ui-emotes', 2, 4),       // question mark
+  'emote-heart': sf16('ui-emotes', 4, 4),          // heart
+  'emote-music': sf16('ui-emotes', 6, 4),          // music note
+  'emote-stretch': sf16('ui-emotes', 8, 4),        // star/sparkle = closest arms-up/celebrate analog
 
   // Speech bubbles (UI_16x16.png, 18 cols x 16 rows)
-  'speech-bubble-left': sf('ui', 0, 8, 2, 2),
-  'speech-bubble-right': sf('ui', 2, 8, 2, 2),
-  'speech-bubble-small': sf('ui', 4, 8),
+  'speech-bubble-left': sf16('ui', 0, 8, 2, 2),
+  'speech-bubble-right': sf16('ui', 2, 8, 2, 2),
+  'speech-bubble-small': sf16('ui', 4, 8),
 
   // Floor shadows (Room_Builder_Floor_Shadows_16x16.png)
-  'shadow-top': sf('floor-shadows', 1, 0),
-  'shadow-left': sf('floor-shadows', 0, 1),
-  'shadow-corner': sf('floor-shadows', 0, 0),
-  'shadow-right': sf('floor-shadows', 2, 1),
-  'shadow-bottom': sf('floor-shadows', 1, 2),
+  'shadow-top': sf16('floor-shadows', 1, 0),
+  'shadow-left': sf16('floor-shadows', 0, 1),
+  'shadow-corner': sf16('floor-shadows', 0, 0),
+  'shadow-right': sf16('floor-shadows', 2, 1),
+  'shadow-bottom': sf16('floor-shadows', 1, 2),
 
   // ── MetroCity Characters (32x32 frames) ───────────────────────────────────
   // Character Model: 768x192 = 24 cols × 6 rows at 32px

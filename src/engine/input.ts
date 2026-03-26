@@ -14,6 +14,7 @@ import { screenToTile, computeAutoFitZoom } from './camera';
 import { getRoomAtTile, ROOMS, OFFICE_TILE_MAP, getFurnitureAt, FURNITURE } from './officeLayout';
 import { startWalk } from './characters';
 import { WALK_SPEED, ZOOM_OVERVIEW_THRESHOLD } from './types';
+import { isWalkable } from './tileMap';
 import {
   createZoomState,
   onZoomInput,
@@ -24,7 +25,7 @@ import {
 import type { AgentId } from '@/types/agent';
 
 /** Valid agent room IDs (excludes war-room and billy) */
-const AGENT_ROOM_IDS = new Set<string>(['patrik', 'marcos', 'sandra', 'isaac', 'wendy']);
+const AGENT_ROOM_IDS = new Set<string>(['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie']);
 
 /** Valid file extensions for drag-and-drop */
 const VALID_EXTENSIONS = new Set(['.pdf', '.docx']);
@@ -37,6 +38,7 @@ const KEY_TO_ROOM: Record<string, string> = {
   's': 'sandra',
   'i': 'isaac',
   'w': 'wendy',
+  'c': 'charlie',
   '6': 'war-room',
   'b': 'billy',
 };
@@ -259,6 +261,28 @@ export function setupInputHandlers(canvas: HTMLCanvasElement): () => void {
       // Apply speed walk for keyboard navigation
       const billy = state.characters.find(c => c.id === 'billy');
       if (billy) billy.speed = WALK_SPEED_KEYBOARD;
+      return;
+    }
+
+    // Arrow keys: move Billy one tile at a time in the four cardinal directions.
+    // Uses startWalk so animations and state transitions work normally.
+    const arrowDeltas: Record<string, { dc: number; dr: number }> = {
+      ArrowUp:    { dc:  0, dr: -1 },
+      ArrowDown:  { dc:  0, dr:  1 },
+      ArrowLeft:  { dc: -1, dr:  0 },
+      ArrowRight: { dc:  1, dr:  0 },
+    };
+    const delta = arrowDeltas[e.key];
+    if (delta) {
+      e.preventDefault(); // prevent page scroll
+      const { characters } = useOfficeStore.getState();
+      const billy = characters.find((c) => c.id === 'billy');
+      if (!billy) return;
+      const nextCol = billy.tileCol + delta.dc;
+      const nextRow = billy.tileRow + delta.dr;
+      if (isWalkable(nextCol, nextRow, OFFICE_TILE_MAP)) {
+        startWalk('billy', nextCol, nextRow, OFFICE_TILE_MAP);
+      }
       return;
     }
 

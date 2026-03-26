@@ -66,7 +66,7 @@ export function Header({ sidebarOpen, onToggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="top-bar">
+    <header data-testid="header" className="top-bar">
       {/* Left: app name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {onToggleSidebar && (

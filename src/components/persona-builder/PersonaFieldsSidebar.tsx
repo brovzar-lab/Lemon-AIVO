@@ -27,7 +27,7 @@ export function PersonaFieldsSidebar({ onPreview, onSave, isSaving }: Props) {
   const progressPct = Math.round((populated / 6) * 100);
 
   return (
-    <div className="persona-sidebar" style={{ flexShrink: 0 }}>
+    <div data-testid="persona-fields-sidebar" className="persona-sidebar" style={{ flexShrink: 0 }}>
       {/* Agent header */}
       <div className="persona-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{

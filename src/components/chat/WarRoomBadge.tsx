@@ -3,7 +3,7 @@
  */
 export function WarRoomBadge() {
   return (
-    <span style={{
+    <span data-testid="war-room-badge" style={{
       display: 'inline-flex',
       alignItems: 'center',
       gap: 3,

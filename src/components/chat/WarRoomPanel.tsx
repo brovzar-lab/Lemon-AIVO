@@ -34,7 +34,7 @@ export function WarRoomPanel() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div data-testid="war-room-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Response area */}
       <div className="chat-messages">
         {isGathering && (

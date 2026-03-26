@@ -51,7 +51,7 @@ export function PersonaBuilderOverlay() {
   if (!isOpen) return null;
 
   return (
-    <div className="persona-overlay" style={{ flexDirection: 'column' }}>
+    <div data-testid="persona-builder-overlay" className="persona-overlay" style={{ flexDirection: 'column' }}>
       {/* Top bar */}
       <div className="persona-chat-header" style={{
         height: 48, background: 'var(--bg-dark)',

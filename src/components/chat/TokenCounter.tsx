@@ -15,7 +15,7 @@ export function TokenCounter({ tokenCount, isSummarizing }: TokenCounterProps) {
 
   if (isSummarizing) {
     return (
-      <div style={{ padding: '4px 8px' }}>
+      <div data-testid="token-counter" style={{ padding: '4px 8px' }}>
         <div style={{ height: 3, width: '100%', background: 'var(--bg-dark)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{
             height: '100%',
@@ -46,6 +46,7 @@ export function TokenCounter({ tokenCount, isSummarizing }: TokenCounterProps) {
 
   return (
     <div
+      data-testid="token-counter"
       style={{ padding: '4px 8px' }}
       title={`~${tokenCount.toLocaleString()} tokens (${percentage.toFixed(1)}%)`}
     >

@@ -40,10 +40,18 @@ export function PersonaBuilderChat({ onBackToBuild }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
+  // Guard against React StrictMode double-invocation: set flag synchronously so the
+  // second effect run sees it before the async sendToInterviewAI resolves.
+  const hasTriggeredRef = useRef(false);
   useEffect(() => {
-    if (mode === 'interview' && interviewMessages.length === 0 && agentId && !isStreaming) {
-      void sendToInterviewAI([]);
-    }
+    if (mode !== 'interview' || !agentId || isStreaming) return;
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+    void sendToInterviewAI([]);
+    return () => {
+      // Reset on cleanup so navigating away and back re-triggers the greeting
+      hasTriggeredRef.current = false;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
 
@@ -183,7 +191,7 @@ export function PersonaBuilderChat({ onBackToBuild }: Props) {
   };
 
   return (
-    <div className="persona-chat">
+    <div data-testid="persona-builder-chat" className="persona-chat">
       {/* Header */}
       <div className="persona-chat-header">
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: agent?.color ?? '#6B7280', flexShrink: 0 }} />

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛋 Furniture Composer — Lemon Studios</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --panel: #151a24; --border: rgba(59,130,246,0.25);
+      --accent: #3b82f6; --accent2: #60a5fa; --text: #e2e8f0;
+      --dim: rgba(255,255,255,0.35); --green: rgba(16,185,129,0.5);
+      --greenBg: rgba(16,185,129,0.12); --amber: rgba(251,191,36,0.7);
+    }
+    html,body { height:100%; background:var(--bg); color:var(--text); font-family:monospace; font-size:12px; }
+    header.topbar {
+      display:flex; align-items:center; gap:12px; padding:6px 14px;
+      background:var(--panel); border-bottom:2px solid var(--border); position:sticky; top:0; z-index:100;
+      flex-wrap:wrap; min-height:39px;
+    }
+    header.topbar h1 { font-size:13px; color:var(--accent); letter-spacing:1px; }
+    .mode-switcher { display:flex; gap:0; }
+    .mode-btn {
+      font-family:monospace; font-size:10px; padding:3px 10px; cursor:pointer;
+      border:1px solid var(--border); background:rgba(59,130,246,0.1); color:var(--accent);
+    }
+    .mode-btn:first-child { border-radius:4px 0 0 4px; }
+    .mode-btn:last-child  { border-radius:0 4px 4px 0; }
+    .mode-btn.active { background:var(--accent); color:#fff; font-weight:700; }
+    .sync { font-size:10px; padding:3px 10px; border-radius:4px; border:1px solid var(--green); color:#6ee7b7; }
+    .back-btn {
+      margin-left:auto; font-family:monospace; font-size:10px; padding:3px 10px; border-radius:4px;
+      border:1px solid rgba(251,191,36,0.4); color:#fcd34d; background:rgba(251,191,36,0.08);
+      cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px;
+      white-space:nowrap; transition:background .15s;
+    }
+    .back-btn:hover { background:rgba(251,191,36,0.18); }
+    /* Three-column responsive layout */
+    .layout { display:flex; height:calc(100vh - 39px); overflow:hidden; }
+
+    /* ── SHEET PANEL (left) ── */
+    /* ── Left (sheet) column: 36% wide, between 280px and 520px ── */
+    .sheet-panel { display:flex; flex-direction:column; border-right:2px solid var(--border); background:var(--panel); flex:0 0 clamp(280px, 36%, 520px); min-width:0; overflow:hidden; }
+    .sheet-controls { display:flex; flex-wrap:wrap; gap:6px; padding:7px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .sheet-controls select,.sheet-controls label { font-family:monospace; font-size:11px; color:var(--dim); display:flex; align-items:center; gap:4px; }
+    .sheet-controls select { background:rgba(59,130,246,0.1); border:1px solid var(--border); color:var(--text); border-radius:3px; padding:2px 5px; cursor:pointer; }
+    .canvas-wrap { flex:1; overflow:auto; background:repeating-conic-gradient(rgba(255,255,255,0.03) 0% 25%,transparent 0% 50%) 0 0/20px 20px; }
+    #sheet-canvas { display:block; cursor:crosshair; image-rendering:pixelated; }
+    .sheet-action-bar { padding:7px 10px; border-top:1px solid var(--border); display:flex; gap:6px; flex-shrink:0; }
+
+    /* ── MIDDLE PANEL ── */
+    /* ── Middle column: 26% wide, between 220px and 340px ── */
+    .mid-panel { display:flex; flex-direction:column; border-right:2px solid var(--border); flex:0 0 clamp(220px, 26%, 340px); min-width:0; overflow:hidden; }
+
+    /* Simple mode: define panel */
+    #simple-panel { display:flex; flex-direction:column; gap:9px; padding:11px; overflow-y:auto; flex:1; }
+    #simple-panel h3 { font-size:10px; color:var(--accent); letter-spacing:1px; }
+    .how-to { padding:8px; border-radius:3px; background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.2); color:var(--amber); font-size:9px; line-height:1.7; }
+    #preview-wrap { width:140px; height:140px; border:1px solid var(--border); border-radius:4px; background:repeating-conic-gradient(rgba(255,255,255,0.04) 0% 25%,transparent 0% 50%) 0 0/16px 16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; align-self:center; }
+    #preview-canvas { image-rendering:pixelated; }
+    .sel-info { font-size:9px; color:var(--dim); text-align:center; }
+    .field-group { display:flex; flex-direction:column; gap:4px; }
+    .field-group label { font-size:9px; color:var(--dim); }
+    .field-group input,.field-group select { font-family:monospace; font-size:11px; background:rgba(59,130,246,0.08); border:1px solid var(--border); border-radius:3px; padding:5px 7px; color:var(--text); width:100%; }
+    .field-group input:focus,.field-group select:focus { outline:none; border-color:var(--accent); }
+    .action-btn { font-family:monospace; font-size:11px; padding:6px 10px; border-radius:4px; border:none; cursor:pointer; width:100%; font-weight:700; transition:opacity .15s; }
+    .action-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-save  { background:var(--accent); color:#fff; }
+    .btn-save:hover:not(:disabled) { background:#2563eb; }
+    .btn-green { background:rgba(16,185,129,0.3); color:#6ee7b7; border:1px solid var(--green); }
+    .btn-green:hover:not(:disabled) { background:rgba(16,185,129,0.5); }
+    .btn-clear { background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .btn-clear:hover { background:rgba(239,68,68,0.3); }
+    .btn-amber { background:rgba(251,191,36,0.15); color:#fcd34d; border:1px solid rgba(251,191,36,0.3); }
+    .btn-amber:hover { background:rgba(251,191,36,0.28); }
+
+    /* Assembly mode: mid panel */
+    #assembly-panel { display:flex; flex-direction:column; flex:1; overflow:hidden; }
+    .asm-section { border-bottom:1px solid var(--border); padding:8px 10px; flex-shrink:0; }
+    .asm-section h4 { font-size:9px; color:var(--accent); letter-spacing:1px; margin-bottom:6px; }
+    .parts-palette { display:flex; flex-wrap:wrap; gap:5px; min-height:52px; max-height:120px; overflow-y:auto; }
+    .part-btn {
+      width:48px; height:48px; border:1.5px solid var(--border); border-radius:3px; cursor:pointer;
+      background:var(--greenBg); position:relative; display:flex; align-items:center; justify-content:center;
+      transition:border-color .1s;
+    }
+    .part-btn.active { border-color:#6ee7b7; box-shadow:0 0 6px rgba(16,185,129,0.4); }
+    .part-btn canvas { image-rendering:pixelated; }
+    .part-label { position:absolute; top:1px; left:3px; font-size:7px; color:#6ee7b7; font-weight:700; }
+    .asm-grid-controls { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .asm-num { font-family:monospace; font-size:11px; width:40px; background:rgba(59,130,246,0.08); border:1px solid var(--border); border-radius:3px; padding:3px 5px; color:var(--text); text-align:center; }
+    .asm-grid-wrap { flex:1; min-height:0; overflow:auto; padding:8px 10px; background:repeating-conic-gradient(rgba(255,255,255,0.02) 0% 25%,transparent 0% 50%) 0 0/16px 16px; }
+    #assembly-canvas { image-rendering:pixelated; cursor:crosshair; display:block; }
+    .asm-footer { padding:8px 10px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; border-top:1px solid var(--border); }
+    .asm-help { font-size:8px; color:rgba(255,255,255,0.3); text-align:center; }
+
+    /* ── PIECES PANEL (right) ── */
+    /* ── Right (saved pieces) column: fills remaining space, min 160px ── */
+    .pieces-panel { display:flex; flex-direction:column; flex:1; min-width:160px; overflow:hidden; }
+    .pieces-header { display:flex; align-items:center; justify-content:space-between; padding:7px 11px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .pieces-header h2 { font-size:10px; color:var(--accent); letter-spacing:1px; }
+    .pieces-header .meta { font-size:9px; color:var(--dim); }
+    .pieces-list { flex:1; overflow-y:auto; padding:7px; display:flex; flex-wrap:wrap; gap:5px; align-content:flex-start; }
+    .piece-card { border:1px solid var(--green); border-radius:4px; background:var(--greenBg); padding:5px; display:flex; flex-direction:column; align-items:center; gap:3px; width:86px; position:relative; }
+    .piece-card canvas { image-rendering:pixelated; }
+    .piece-card .pc-name { font-size:7px; color:var(--text); text-align:center; word-break:break-word; }
+    .piece-card .pc-cat  { font-size:6px; color:var(--dim); }
+    .piece-card .pc-dim  { font-size:6px; color:var(--accent2); }
+    .piece-card .pc-badge { font-size:6px; color:#fcd34d; }
+    .piece-card .del-btn { position:absolute; top:2px; right:2px; background:rgba(239,68,68,0.7); border:none; border-radius:2px; color:#fff; cursor:pointer; font-size:7px; padding:1px 3px; display:none; }
+    .piece-card:hover .del-btn { display:block; }
+    .pieces-footer { border-top:1px solid var(--border); padding:7px 11px; display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap; }
+    .pieces-footer button { font-family:monospace; font-size:9px; padding:3px 8px; border-radius:3px; background:rgba(59,130,246,0.12); border:1px solid var(--border); color:var(--accent2); cursor:pointer; }
+    .pieces-footer button:hover { background:rgba(59,130,246,0.25); }
+    .pieces-footer .btn-danger { background:rgba(239,68,68,0.1); color:#fca5a5; border-color:rgba(239,68,68,0.3); }
+    .empty-msg { color:var(--dim); font-size:11px; padding:20px; text-align:center; width:100%; }
+
+    /* ── PIECE PREVIEW MODAL ─── */
+    #preview-modal { position:fixed; inset:0; background:rgba(0,0,0,0.78); display:none; align-items:center; justify-content:center; z-index:500; }
+    #preview-modal.open { display:flex; }
+    .preview-box { background:#0d1117; border:1px solid var(--green); border-radius:8px; padding:20px; display:flex; flex-direction:column; align-items:center; gap:12px; max-width:80vw; max-height:88vh; overflow:auto; position:relative; }
+    .preview-box h3 { font-size:12px; color:var(--accent); letter-spacing:1px; margin:0; }
+    .preview-box .preview-meta { font-size:9px; color:var(--dim); }
+    .preview-canvas-wrap { background:repeating-conic-gradient(rgba(255,255,255,0.05) 0% 25%,transparent 0% 50%) 0 0/20px 20px; border:1px solid var(--border); border-radius:4px; display:flex; align-items:center; justify-content:center; padding:12px; }
+    #preview-canvas { image-rendering:pixelated; display:block; }
+    .preview-close { position:absolute; top:8px; right:10px; background:transparent; border:none; color:var(--dim); font-size:16px; cursor:pointer; padding:2px 6px; }
+    .preview-close:hover { color:var(--text); }
+    .preview-hint { font-size:8px; color:var(--dim); text-align:center; }
+
+    .toast { position:fixed; bottom:18px; right:18px; padding:7px 14px; background:#065f46; border:1px solid #6ee7b7; border-radius:4px; color:#6ee7b7; font-size:11px; z-index:999; display:none; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🛋 FURNITURE COMPOSER</h1>
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="btn-simple">✂️ Simple Piece</button>
+    <button class="mode-btn" id="btn-assembly">🧩 Assembly Builder</button>
+  </div>
+  <span id="sync-status" class="sync">⬆ 0 pieces</span>
+  <a href="/" class="back-btn" title="Return to the Office">← OFFICE</a>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: Sprite sheet -->
+  <section class="sheet-panel">
+    <div class="sheet-controls">
+      <label>Sheet: <select id="sheet-select"></select></label>
+      <label>Zoom: <select id="zoom-select">
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="3">3×</option>
+      </select></label>
+      <span style="color:var(--accent2);font-size:9px" id="sheet-dims">—</span>
+    </div>
+    <div class="canvas-wrap"><canvas id="sheet-canvas"></canvas></div>
+    <div class="sheet-action-bar">
+      <button class="action-btn btn-save" id="save-btn" disabled style="flex:1">✓ Save Piece</button>
+      <button class="action-btn btn-green" id="add-part-btn" disabled style="flex:1;display:none">➕ Add as Part</button>
+      <button class="action-btn btn-clear" id="clear-btn" style="flex:0 0 auto;width:auto;padding:6px 10px">✕</button>
+    </div>
+  </section>
+
+  <!-- MIDDLE: changes based on mode -->
+  <div class="mid-panel">
+
+    <!-- Simple mode panel -->
+    <div id="simple-panel">
+      <h3>DEFINE PIECE</h3>
+      <div class="how-to">
+        ① Pick sheet → ② Drag tiles → ③ Name &amp; Save<br>
+        Switch to <strong>Assembly Builder</strong> for multi-part pieces.
+      </div>
+      <div id="preview-wrap"><canvas id="preview-canvas" width="1" height="1"></canvas></div>
+      <div class="sel-info" id="sel-info">No selection yet</div>
+      <div class="field-group"><label>Name</label><input id="piece-name" type="text" placeholder="e.g. Red Rug…"></div>
+      <div class="field-group"><label>Category</label><select id="piece-category">
+        <option>Desks</option><option>Chairs &amp; Seating</option><option>Tables</option>
+        <option>Plants</option><option>Storage</option><option>Tech &amp; Screens</option>
+        <option>Boards &amp; Signs</option><option>Decor</option><option>Film Studio</option>
+      </select></div>
+    </div>
+
+    <!-- Assembly mode panel -->
+    <div id="assembly-panel" style="display:none">
+
+      <div class="asm-section">
+        <h4>① PARTS PALETTE <span id="parts-count" style="color:var(--dim)">(0 parts)</span></h4>
+        <div class="parts-palette" id="parts-palette">
+          <span style="font-size:9px;color:var(--dim)">Select tiles on the sheet → Add as Part</span>
+        </div>
+      </div>
+
+      <div class="asm-section">
+        <h4>② ASSEMBLY GRID</h4>
+        <div class="asm-grid-controls">
+          <label style="font-size:9px;color:var(--dim)">W: <input type="number" class="asm-num" id="asm-w" value="5" min="1" max="20"></label>
+          <label style="font-size:9px;color:var(--dim)">H: <input type="number" class="asm-num" id="asm-h" value="3" min="1" max="20"></label>
+          <button class="action-btn btn-amber" id="asm-resize-btn" style="width:auto;padding:3px 8px;font-size:9px">Resize</button>
+          <button class="action-btn btn-clear" id="asm-clear-btn" style="width:auto;padding:3px 8px;font-size:9px">Clear Grid</button>
+        </div>
+      </div>
+
+      <div class="asm-grid-wrap">
+        <canvas id="assembly-canvas"></canvas>
+      </div>
+
+      <div class="asm-footer">
+        <div class="asm-help">Click grid = place active part • Right-click = erase • Build L→center→R for tables, corners+edges for rugs</div>
+        <div class="field-group"><label>Assembly name</label><input id="asm-name" type="text" placeholder="e.g. Long Conference Table"></div>
+        <div class="field-group"><label>Category</label><select id="asm-category">
+          <option>Desks</option><option>Chairs &amp; Seating</option><option>Tables</option>
+          <option>Plants</option><option>Storage</option><option>Tech &amp; Screens</option>
+          <option>Boards &amp; Signs</option><option>Decor</option><option>Film Studio</option>
+        </select></div>
+        <button class="action-btn btn-save" id="save-assembly-btn" disabled>💾 Save Assembly as Piece</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Saved pieces -->
+  <section class="pieces-panel">
+    <div class="pieces-header">
+      <h2>SAVED PIECES</h2>
+      <span class="meta" id="piece-count-label">0 pieces</span>
+    </div>
+    <div class="pieces-list" id="pieces-list">
+      <div class="empty-msg">No pieces yet.<br>Use Simple or Assembly mode to create some.</div>
+    </div>
+    <div class="pieces-footer">
+      <button id="export-btn">📥 Export JSON</button>
+      <button id="import-btn">📤 Import JSON</button>
+      <button id="copy-btn">📋 Copy</button>
+      <button class="btn-danger" id="clear-all-btn">🗑 Clear All</button>
+    </div>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Piece Preview Modal (double-click any saved piece card) -->
+<div id="preview-modal">
+  <div class="preview-box">
+    <button class="preview-close" id="preview-close-btn">✕</button>
+    <h3 id="preview-title">PIECE PREVIEW</h3>
+    <span class="preview-meta" id="preview-meta"></span>
+    <div class="preview-canvas-wrap">
+    <canvas id="modal-preview-canvas"></canvas>
+    </div>
+    <span class="preview-hint">Double-click any piece to preview it here</span>
+  </div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'lemon_piece_defs_v1';
+const TILE = 48;
+const ASSM_CELL = 48; // px per assembly grid cell
+const PART_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const SHEETS = {
+  'generic-48':     '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/1_Generic_48x48.png',
+  'living-room-48': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/2_LivingRoom_48x48.png',
+  'conference-48':  '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/13_Conference_Hall_48x48.png',
+  'classroom-48':   '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/5_Classroom_and_library_48x48.png',
+  'film-studio-48': '/sprites/modern-interiors-paid/1_Interiors/48x48/Theme_Sorter_48x48/23_Television_and_Film_Studio_48x48.png',
+};
+
+// ── Shared state ──────────────────────────────────────────────────────────────
+let sheetImage = null, sheetId = '', zoom = 2;
+let dragStart = null, dragEnd = null, isDragging = false;
+let pieces = [];
+let mode = 'simple'; // 'simple' | 'assembly'
+
+// ── Assembly state ────────────────────────────────────────────────────────────
+let asmParts = [];       // { id, label, sheetId, srcX, srcY, srcW, srcH, tileW, tileH }
+let activePartId = null;
+let asmW = 5, asmH = 3;
+let asmGrid = [];        // asmGrid[row][col] = { partId, originCol, originRow } | null
+let asmHover = null;     // { col, row }
+
+function initGrid() {
+  asmGrid = Array.from({ length: asmH }, () => Array(asmW).fill(null));
+}
+// Resize grid WITHOUT wiping existing placements — cells outside new bounds are dropped
+function resizeGrid(newW, newH) {
+  const old = asmGrid;
+  asmW = Math.max(1, newW);
+  asmH = Math.max(1, newH);
+  asmGrid = Array.from({ length: asmH }, (_, r) =>
+    Array.from({ length: asmW }, (_, c) => (old[r] && old[r][c] !== undefined ? old[r][c] : null))
+  );
+  // Remove any cells whose origin is now out of bounds
+  for (let r = 0; r < asmH; r++) for (let c = 0; c < asmW; c++) {
+    const cell = asmGrid[r][c];
+    if (!cell) continue;
+    if (cell.originCol >= asmW || cell.originRow >= asmH) asmGrid[r][c] = null;
+  }
+}
+initGrid();
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const sheetSelect  = document.getElementById('sheet-select');
+const zoomSelect   = document.getElementById('zoom-select');
+const sheetDims    = document.getElementById('sheet-dims');
+const sheetCanvas  = document.getElementById('sheet-canvas');
+const sheetCtx     = sheetCanvas.getContext('2d');
+const previewCanvas= document.getElementById('preview-canvas');
+const previewCtx   = previewCanvas.getContext('2d');
+const selInfo      = document.getElementById('sel-info');
+const saveBtn      = document.getElementById('save-btn');
+const addPartBtn   = document.getElementById('add-part-btn');
+const clearBtn     = document.getElementById('clear-btn');
+const pieceNameEl  = document.getElementById('piece-name');
+const pieceCatEl   = document.getElementById('piece-category');
+const piecesList   = document.getElementById('pieces-list');
+const pieceCount   = document.getElementById('piece-count-label');
+const syncStatus   = document.getElementById('sync-status');
+const exportBtn    = document.getElementById('export-btn');
+const importBtn    = document.getElementById('import-btn');
+const copyBtn      = document.getElementById('copy-btn');
+const clearAllBtn  = document.getElementById('clear-all-btn');
+const toast        = document.getElementById('toast');
+const simplePanelEl= document.getElementById('simple-panel');
+const asmPanelEl   = document.getElementById('assembly-panel');
+const partsPalette = document.getElementById('parts-palette');
+const partsCount   = document.getElementById('parts-count');
+const asmCanvas    = document.getElementById('assembly-canvas');
+const asmCtx       = asmCanvas.getContext('2d');
+const asmWEl       = document.getElementById('asm-w');
+const asmHEl       = document.getElementById('asm-h');
+const asmNameEl    = document.getElementById('asm-name');
+const asmCatEl     = document.getElementById('asm-category');
+const saveAsmBtn   = document.getElementById('save-assembly-btn');
+
+// ── Sheet init ────────────────────────────────────────────────────────────────
+Object.keys(SHEETS).forEach(id => {
+  const o = document.createElement('option');
+  o.value = id; o.textContent = id;
+  sheetSelect.appendChild(o);
+});
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+function loadPieces() { try { pieces = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { pieces = []; } }
+function savePieces() { localStorage.setItem(STORAGE_KEY, JSON.stringify(pieces)); updateSync(); renderPiecesList(); }
+function updateSync() { syncStatus.textContent = `⬆ ${pieces.length} piece${pieces.length!==1?'s':''}`; }
+
+// ── Mode switch ───────────────────────────────────────────────────────────────
+document.getElementById('btn-simple').addEventListener('click', () => setMode('simple'));
+document.getElementById('btn-assembly').addEventListener('click', () => setMode('assembly'));
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-simple').classList.toggle('active', m === 'simple');
+  document.getElementById('btn-assembly').classList.toggle('active', m === 'assembly');
+  simplePanelEl.style.display  = m === 'simple' ? 'flex' : 'none';
+  asmPanelEl.style.display     = m === 'assembly' ? 'flex' : 'none';
+  saveBtn.style.display     = m === 'simple' ? '' : 'none';
+  addPartBtn.style.display  = m === 'assembly' ? '' : 'none';
+  addPartBtn.disabled = !normalizedSel();
+}
+
+// ── Load sheet ────────────────────────────────────────────────────────────────
+function loadSheet(id) {
+  sheetId = id;
+  cachedSheets[id] = cachedSheets[id] || (() => {
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.src = SHEETS[id]; return img;
+  })();
+  const img = cachedSheets[id];
+  const finish = () => {
+    sheetImage = img;
+    const cols = Math.floor(img.naturalWidth / TILE);
+    const rows = Math.floor(img.naturalHeight / TILE);
+    sheetDims.textContent = `${img.naturalWidth}×${img.naturalHeight}px — ${cols}×${rows} tiles`;
+    renderSheet();
+  };
+  if (img.complete && img.naturalWidth) finish();
+  else { img.onload = finish; img.onerror = () => { sheetDims.textContent = '⚠ Failed'; }; }
+}
+
+// ── Sheet rendering ───────────────────────────────────────────────────────────
+function tw() { return TILE * zoom; }
+
+function renderSheet() {
+  if (!sheetImage) return;
+  const t = tw();
+  const cols = Math.floor(sheetImage.naturalWidth / TILE);
+  const rows = Math.floor(sheetImage.naturalHeight / TILE);
+  sheetCanvas.width  = cols * t;
+  sheetCanvas.height = rows * t;
+  sheetCtx.imageSmoothingEnabled = false;
+  sheetCtx.drawImage(sheetImage, 0, 0, sheetCanvas.width, sheetCanvas.height);
+
+  // Grid lines
+  sheetCtx.strokeStyle = 'rgba(59,130,246,0.28)'; sheetCtx.lineWidth = 0.5;
+  for (let c = 0; c <= cols; c++) { sheetCtx.beginPath(); sheetCtx.moveTo(c*t,0); sheetCtx.lineTo(c*t,sheetCanvas.height); sheetCtx.stroke(); }
+  for (let r = 0; r <= rows; r++) { sheetCtx.beginPath(); sheetCtx.moveTo(0,r*t); sheetCtx.lineTo(sheetCanvas.width,r*t); sheetCtx.stroke(); }
+
+  // Selection
+  const sel = normalizedSel();
+  if (sel) {
+    const { c0,r0,c1,r1 } = sel;
+    const sw = (c1-c0+1)*t, sh = (r1-r0+1)*t;
+    sheetCtx.fillStyle = 'rgba(59,130,246,0.3)'; sheetCtx.fillRect(c0*t,r0*t,sw,sh);
+    sheetCtx.strokeStyle='#60a5fa'; sheetCtx.lineWidth=2; sheetCtx.strokeRect(c0*t+1,r0*t+1,sw-2,sh-2);
+    sheetCtx.fillStyle='#fff'; sheetCtx.font=`${Math.max(9,t*0.18)}px monospace`;
+    sheetCtx.textAlign='left'; sheetCtx.textBaseline='top';
+    sheetCtx.fillText(`${c1-c0+1}×${r1-r0+1}`, c0*t+3, r0*t+3);
+  }
+
+  // Green outlines for saved simple pieces on this sheet
+  pieces.filter(p => p.sheetId === sheetId && !p.kind).forEach(p => {
+    sheetCtx.strokeStyle='rgba(16,185,129,0.55)'; sheetCtx.lineWidth=1.5;
+    sheetCtx.strokeRect(p.col*t+.75,p.row*t+.75,p.cols*t-1.5,p.rows*t-1.5);
+    sheetCtx.fillStyle='rgba(16,185,129,0.1)'; sheetCtx.fillRect(p.col*t,p.row*t,p.cols*t,p.rows*t);
+    sheetCtx.fillStyle='#6ee7b7'; sheetCtx.font=`${Math.max(7,t*0.13)}px monospace`;
+    sheetCtx.textAlign='left'; sheetCtx.textBaseline='top';
+    sheetCtx.fillText(p.name, p.col*t+2, p.row*t+2);
+  });
+
+  // Amber outlines for palette parts on this sheet
+  asmParts.filter(p => p.sheetId === sheetId).forEach(p => {
+    const sx = p.srcX/TILE*t, sy = p.srcY/TILE*t, sw2 = p.srcW/TILE*t, sh2 = p.srcH/TILE*t;
+    sheetCtx.strokeStyle='rgba(251,191,36,0.7)'; sheetCtx.lineWidth=1.5;
+    sheetCtx.strokeRect(sx+.75,sy+.75,sw2-1.5,sh2-1.5);
+    sheetCtx.fillStyle='rgba(251,191,36,0.1)'; sheetCtx.fillRect(sx,sy,sw2,sh2);
+    sheetCtx.fillStyle='#fcd34d'; sheetCtx.font=`bold ${Math.max(8,t*0.15)}px monospace`;
+    sheetCtx.textAlign='left'; sheetCtx.textBaseline='top';
+    sheetCtx.fillText(p.label, sx+2, sy+2);
+  });
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+function normalizedSel() {
+  if (!dragStart || !dragEnd) return null;
+  return { c0:Math.min(dragStart.col,dragEnd.col), r0:Math.min(dragStart.row,dragEnd.row),
+           c1:Math.max(dragStart.col,dragEnd.col), r1:Math.max(dragStart.row,dragEnd.row) };
+}
+function canvasToTile(e) {
+  const rect = sheetCanvas.getBoundingClientRect();
+  const x = (e.clientX-rect.left)/(rect.width/sheetCanvas.width);
+  const y = (e.clientY-rect.top)/(rect.height/sheetCanvas.height);
+  return { col:Math.floor(x/tw()), row:Math.floor(y/tw()) };
+}
+
+sheetCanvas.addEventListener('mousedown', e => {
+  if (!sheetImage) return; e.preventDefault();
+  isDragging=true; dragStart=canvasToTile(e); dragEnd={...dragStart}; renderSheet();
+});
+sheetCanvas.addEventListener('mousemove', e => {
+  if (!isDragging||!sheetImage) return; dragEnd=canvasToTile(e); renderSheet();
+});
+window.addEventListener('mouseup', e => {
+  if (!isDragging) return; isDragging=false; dragEnd=canvasToTile(e); renderSheet();
+  updatePreview();
+  const sel = normalizedSel();
+  addPartBtn.disabled = !sel;
+  // In Assembly Builder mode, automatically import the dragged region as a part
+  if (sel && mode === 'assembly') {
+    const {c0,r0,c1,r1} = sel;
+    const label = PART_LETTERS[asmParts.length % PART_LETTERS.length];
+    asmParts.push({
+      id: `part_${Date.now()}`, label, sheetId,
+      srcX:c0*TILE, srcY:r0*TILE, srcW:(c1-c0+1)*TILE, srcH:(r1-r0+1)*TILE,
+      tileW:c1-c0+1, tileH:r1-r0+1,
+    });
+    dragStart=null; dragEnd=null;
+    renderSheet(); renderPartsPalette(); renderAssembly();
+    showToast(`➕ Auto-added Part ${label} (${c1-c0+1}×${r1-r0+1})`);
+  }
+});
+
+// ── Preview (simple mode) ─────────────────────────────────────────────────────
+function updatePreview() {
+  const sel = normalizedSel();
+  if (!sel || !sheetImage) { selInfo.textContent='No selection yet'; saveBtn.disabled=true; previewCanvas.width=1; previewCanvas.height=1; return; }
+  const {c0,r0,c1,r1}=sel, cols2=c1-c0+1, rows2=r1-r0+1;
+  selInfo.textContent=`col ${c0}–${c1}, row ${r0}–${r1} (${cols2}×${rows2} tiles)`;
+  saveBtn.disabled = !pieceNameEl.value.trim();
+  const srcX=c0*TILE, srcY=r0*TILE, srcW=cols2*TILE, srcH=rows2*TILE;
+  const sc = Math.min(130/srcW,130/srcH);
+  previewCanvas.width=Math.round(srcW*sc); previewCanvas.height=Math.round(srcH*sc);
+  previewCtx.imageSmoothingEnabled=false;
+  previewCtx.drawImage(sheetImage, srcX,srcY,srcW,srcH, 0,0,previewCanvas.width,previewCanvas.height);
+}
+pieceNameEl.addEventListener('input', () => { saveBtn.disabled = !pieceNameEl.value.trim() || !normalizedSel(); });
+
+// ── Save simple piece ─────────────────────────────────────────────────────────
+saveBtn.addEventListener('click', () => {
+  const sel=normalizedSel(); if(!sel||!sheetImage) return;
+  const name=pieceNameEl.value.trim(); if(!name) return;
+  const {c0,r0,c1,r1}=sel;
+  pieces.push({ id:`${sheetId}_${c0}_${r0}_${Date.now()}`, name, category:pieceCatEl.value, sheetId, col:c0, row:r0, cols:c1-c0+1, rows:r1-r0+1 });
+  savePieces(); showToast(`✓ Saved "${name}"`);
+  dragStart=null; dragEnd=null; pieceNameEl.value=''; renderSheet(); updatePreview();
+});
+clearBtn.addEventListener('click', () => { dragStart=null; dragEnd=null; renderSheet(); updatePreview(); });
+
+// ── Add as Part (assembly) ────────────────────────────────────────────────────
+addPartBtn.addEventListener('click', () => {
+  const sel=normalizedSel(); if(!sel||!sheetImage) return;
+  const {c0,r0,c1,r1}=sel;
+  const label = PART_LETTERS[asmParts.length % PART_LETTERS.length];
+  asmParts.push({
+    id: `part_${Date.now()}`, label, sheetId,
+    srcX:c0*TILE, srcY:r0*TILE, srcW:(c1-c0+1)*TILE, srcH:(r1-r0+1)*TILE,
+    tileW:c1-c0+1, tileH:r1-r0+1,
+  });
+  dragStart=null; dragEnd=null;
+  renderSheet(); renderPartsPalette(); renderAssembly();
+  showToast(`➕ Added Part ${label}`);
+});
+
+// ── Parts palette rendering ───────────────────────────────────────────────────
+function renderPartsPalette() {
+  partsCount.textContent=`(${asmParts.length} parts)`;
+  saveAsmBtn.disabled = asmParts.length===0 || !asmNameEl.value.trim();
+  if(asmParts.length===0) {
+    partsPalette.innerHTML='<span style="font-size:9px;color:var(--dim)">Select tiles on the sheet → Add as Part</span>';
+    return;
+  }
+  partsPalette.innerHTML='';
+  asmParts.forEach(part => {
+    const btn = document.createElement('button');
+    btn.className='part-btn'+(part.id===activePartId?' active':'');
+    btn.title=`Part ${part.label}: ${part.tileW}×${part.tileH} tiles\nDrag onto grid, or click to select + click grid to place`;
+    btn.draggable = true;
+    btn.dataset.partId = part.id;
+    const lbl = document.createElement('span'); lbl.className='part-label'; lbl.textContent=part.label; btn.appendChild(lbl);
+    const c=document.createElement('canvas'); c.width=42; c.height=42;
+    btn.appendChild(c);
+    drawPartThumb(c, part);
+    const delBtn=document.createElement('span');
+    delBtn.textContent='×'; delBtn.style.cssText='position:absolute;top:1px;right:2px;font-size:9px;color:#fca5a5;cursor:pointer;';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); removePart(part.id); });
+    btn.appendChild(delBtn);
+    btn.addEventListener('click', () => { activePartId = activePartId===part.id?null:part.id; renderPartsPalette(); renderAssembly(); });
+    // Drag start: record which part is being dragged
+    btn.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', part.id);
+      e.dataTransfer.effectAllowed = 'copy';
+      draggedPartId = part.id;
+    });
+    btn.addEventListener('dragend', () => { draggedPartId = null; });
+    partsPalette.appendChild(btn);
+  });
+}
+function removePart(id) {
+  asmParts=asmParts.filter(p=>p.id!==id);
+  if(activePartId===id) activePartId=null;
+  // clear cells using this part
+  for(let r=0;r<asmH;r++) for(let c=0;c<asmW;c++) if(asmGrid[r]?.[c]?.partId===id) asmGrid[r][c]=null;
+  renderSheet(); renderPartsPalette(); renderAssembly();
+}
+function drawPartThumb(canvas, part) {
+  const img = cachedSheets[part.sheetId];
+  if(!img||!img.complete||!img.naturalWidth) { img && img.addEventListener('load',()=>drawPartThumb(canvas,part),{once:true}); return; }
+  const sc=Math.min(canvas.width/part.srcW,canvas.height/part.srcH);
+  const dw=Math.round(part.srcW*sc), dh=Math.round(part.srcH*sc);
+  const ox=Math.round((canvas.width-dw)/2), oy=Math.round((canvas.height-dh)/2);
+  const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img, part.srcX,part.srcY,part.srcW,part.srcH, ox,oy,dw,dh);
+}
+
+// ── Assembly grid rendering ───────────────────────────────────────────────────
+function renderAssembly() {
+  asmCanvas.width  = asmW * ASSM_CELL;
+  asmCanvas.height = asmH * ASSM_CELL;
+  asmCtx.imageSmoothingEnabled=false;
+  asmCtx.clearRect(0,0,asmCanvas.width,asmCanvas.height);
+
+  // Checkerboard bg
+  for(let r=0;r<asmH;r++) for(let c=0;c<asmW;c++) {
+    asmCtx.fillStyle=(r+c)%2===0?'rgba(255,255,255,0.035)':'transparent';
+    asmCtx.fillRect(c*ASSM_CELL,r*ASSM_CELL,ASSM_CELL,ASSM_CELL);
+  }
+
+  // Placed parts (draw at origin cell only)
+  for(let r=0;r<asmH;r++) for(let c=0;c<asmW;c++) {
+    const cell=asmGrid[r]?.[c];
+    if(!cell||cell.originCol!==c||cell.originRow!==r) continue;
+    const part=asmParts.find(p=>p.id===cell.partId); if(!part) continue;
+    const img=cachedSheets[part.sheetId];
+    if(img?.complete&&img.naturalWidth)
+      asmCtx.drawImage(img, part.srcX,part.srcY,part.srcW,part.srcH, c*ASSM_CELL,r*ASSM_CELL,part.tileW*ASSM_CELL,part.tileH*ASSM_CELL);
+    // Part label overlay
+    asmCtx.fillStyle='rgba(251,191,36,0.8)'; asmCtx.font='bold 10px monospace';
+    asmCtx.textAlign='left'; asmCtx.textBaseline='top';
+    asmCtx.fillText(part.label, c*ASSM_CELL+2, r*ASSM_CELL+2);
+  }
+
+  // Grid lines
+  asmCtx.strokeStyle='rgba(59,130,246,0.22)'; asmCtx.lineWidth=0.5;
+  for(let c=0;c<=asmW;c++) { asmCtx.beginPath(); asmCtx.moveTo(c*ASSM_CELL,0); asmCtx.lineTo(c*ASSM_CELL,asmCanvas.height); asmCtx.stroke(); }
+  for(let r=0;r<=asmH;r++) { asmCtx.beginPath(); asmCtx.moveTo(0,r*ASSM_CELL); asmCtx.lineTo(asmCanvas.width,r*ASSM_CELL); asmCtx.stroke(); }
+
+  // Hover preview
+  if(asmHover&&activePartId) {
+    const part=asmParts.find(p=>p.id===activePartId); if(part) {
+      asmCtx.fillStyle='rgba(59,130,246,0.25)';
+      asmCtx.fillRect(asmHover.col*ASSM_CELL, asmHover.row*ASSM_CELL, part.tileW*ASSM_CELL, part.tileH*ASSM_CELL);
+      asmCtx.strokeStyle='#60a5fa'; asmCtx.lineWidth=1.5;
+      asmCtx.strokeRect(asmHover.col*ASSM_CELL+1, asmHover.row*ASSM_CELL+1, part.tileW*ASSM_CELL-2, part.tileH*ASSM_CELL-2);
+    }
+  }
+}
+
+function asmCanvasToCell(e) {
+  const rect=asmCanvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(asmCanvas.width/rect.width);
+  const y=(e.clientY-rect.top)*(asmCanvas.height/rect.height);
+  return { col:Math.floor(x/ASSM_CELL), row:Math.floor(y/ASSM_CELL) };
+}
+
+asmCanvas.addEventListener('mousemove', e => {
+  asmHover=asmCanvasToCell(e); renderAssembly();
+});
+asmCanvas.addEventListener('mouseleave', () => { asmHover=null; renderAssembly(); });
+
+asmCanvas.addEventListener('click', e => {
+  if(!activePartId) return;
+  const part=asmParts.find(p=>p.id===activePartId); if(!part) return;
+  const {col,row}=asmCanvasToCell(e);
+  if(col+part.tileW>asmW||row+part.tileH>asmH) return; // out of bounds
+  for(let r=row;r<row+part.tileH;r++) for(let c=col;c<col+part.tileW;c++) {
+    if(!asmGrid[r]) asmGrid[r]=Array(asmW).fill(null);
+    asmGrid[r][c]={ partId:activePartId, originCol:col, originRow:row };
+  }
+  renderAssembly();
+});
+
+asmCanvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const {col,row}=asmCanvasToCell(e);
+  const cell=asmGrid[row]?.[col]; if(!cell) return;
+  const part=asmParts.find(p=>p.id===cell.partId); if(!part) return;
+  const {originCol:oc,originRow:or}=cell;
+  for(let r=or;r<or+part.tileH;r++) for(let c=oc;c<oc+part.tileW;c++) if(asmGrid[r]) asmGrid[r][c]=null;
+  renderAssembly();
+});
+
+// ── Drag-and-drop from palette to assembly canvas ──────────────────────────────
+let draggedPartId = null;
+
+asmCanvas.addEventListener('dragover', e => {
+  e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  const cell = asmCanvasToCell(e);
+  if (draggedPartId) { asmHover = cell; renderAssembly(); }
+});
+asmCanvas.addEventListener('dragleave', () => { asmHover = null; renderAssembly(); });
+asmCanvas.addEventListener('drop', e => {
+  e.preventDefault();
+  const partId = e.dataTransfer.getData('text/plain') || draggedPartId;
+  if (!partId) return;
+  const part = asmParts.find(p => p.id === partId); if (!part) return;
+  const {col, row} = asmCanvasToCell(e);
+  if (col + part.tileW > asmW || row + part.tileH > asmH) { asmHover=null; renderAssembly(); return; }
+  for (let r = row; r < row + part.tileH; r++) for (let c = col; c < col + part.tileW; c++) {
+    if (!asmGrid[r]) asmGrid[r] = Array(asmW).fill(null);
+    asmGrid[r][c] = { partId, originCol: col, originRow: row };
+  }
+  asmHover = null; draggedPartId = null;
+  renderAssembly();
+  showToast(`✓ Placed Part ${part.label}`);
+});
+
+// Resize grid WITHOUT destroying existing placements
+document.getElementById('asm-resize-btn').addEventListener('click', () => {
+  resizeGrid(parseInt(asmWEl.value)||5, parseInt(asmHEl.value)||3);
+  renderAssembly();
+});
+document.getElementById('asm-clear-btn').addEventListener('click', () => { initGrid(); renderAssembly(); });
+asmNameEl.addEventListener('input', () => { saveAsmBtn.disabled=!asmNameEl.value.trim()||asmParts.length===0; });
+
+// ── Save assembly ─────────────────────────────────────────────────────────────
+saveAsmBtn.addEventListener('click', () => {
+  const name=asmNameEl.value.trim(); if(!name) return;
+  const placements=[];
+  const done=new Set();
+  for(let r=0;r<asmH;r++) for(let c=0;c<asmW;c++) {
+    const cell=asmGrid[r]?.[c]; if(!cell) continue;
+    if(cell.originCol!==c||cell.originRow!==r) continue;
+    const key=`${c}_${r}`; if(done.has(key)) continue; done.add(key);
+    const part=asmParts.find(p=>p.id===cell.partId); if(!part) continue;
+    placements.push({ sheetId:part.sheetId, srcX:part.srcX, srcY:part.srcY, srcW:part.srcW, srcH:part.srcH, gridCol:c, gridRow:r });
+  }
+  if(placements.length===0) { alert('Place some parts on the assembly grid first.'); return; }
+  pieces.push({ id:`assembled_${Date.now()}`, kind:'assembled', name, category:asmCatEl.value, gridW:asmW, gridH:asmH, placements });
+  savePieces(); showToast(`✓ Saved assembly "${name}" (${placements.length} parts)`);
+  // Reset
+  asmParts=[]; activePartId=null; initGrid(); asmNameEl.value='';
+  renderSheet(); renderPartsPalette(); renderAssembly();
+});
+
+// ── Pieces library ────────────────────────────────────────────────────────────
+function renderPiecesList() {
+  pieceCount.textContent=`${pieces.length} piece${pieces.length!==1?'s':''}`;
+  if(pieces.length===0) { piecesList.innerHTML='<div class="empty-msg">No pieces yet.<br>Use Simple or Assembly mode to create some.</div>'; return; }
+  piecesList.innerHTML='';
+  pieces.forEach((p,idx) => {
+    const card=document.createElement('div'); card.className='piece-card';
+    card.title='Double-click to preview';
+
+    const isAsm=p.kind==='assembled';
+
+    // Build all text/badge spans as DOM nodes (never use innerHTML+= after canvas append)
+    const name=document.createElement('span'); name.className='pc-name'; name.textContent=p.name;
+    const cat=document.createElement('span');  cat.className='pc-cat';  cat.textContent=p.category;
+    const dim=document.createElement('span');  dim.className='pc-dim';  dim.textContent=isAsm?`${p.gridW}×${p.gridH} grid`:`${p.cols}×${p.rows} tiles`;
+
+    card.appendChild(name);
+    card.appendChild(cat);
+    card.appendChild(dim);
+
+    if(isAsm) {
+      const badge=document.createElement('span'); badge.className='pc-badge'; badge.textContent='🧩 assembly';
+      card.appendChild(badge);
+    }
+
+    // Canvas thumb must be appended LAST — after all innerHTML-affecting operations
+    const thumb=document.createElement('canvas'); thumb.width=64; thumb.height=64;
+    card.appendChild(thumb);
+    if(isAsm) drawAssemblyThumb(thumb,p);
+    else drawSimpleThumb(thumb,p);
+
+    const del=document.createElement('button'); del.className='del-btn'; del.textContent='×';
+    del.addEventListener('click', (e)=>{ e.stopPropagation(); pieces.splice(idx,1); savePieces(); renderSheet(); });
+    card.appendChild(del);
+
+    card.addEventListener('dblclick', ()=> openPreview(p));
+    piecesList.appendChild(card);
+  });
+}
+
+
+function drawSimpleThumb(canvas, piece) {
+  ensureSheet(piece.sheetId, img => {
+    const srcX=piece.col*TILE,srcY=piece.row*TILE,srcW=piece.cols*TILE,srcH=piece.rows*TILE;
+    const sc=Math.min(64/srcW,64/srcH), dw=Math.round(srcW*sc), dh=Math.round(srcH*sc);
+    const ox=Math.round((64-dw)/2), oy=Math.round((64-dh)/2);
+    const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,64,64);
+    ctx.drawImage(img,srcX,srcY,srcW,srcH,ox,oy,dw,dh);
+  });
+}
+function drawAssemblyThumb(canvas, piece) {
+  // Async: wait for all sheets, then composite
+  const sheetIds=[...new Set(piece.placements.map(p=>p.sheetId))];
+  const pending={};
+  sheetIds.forEach(id=>{ pending[id]=false; ensureSheet(id,()=>{ pending[id]=true; if(Object.values(pending).every(Boolean)) compositeAssemblyThumb(canvas,piece); }); });
+  if(Object.values(pending).every(Boolean)) compositeAssemblyThumb(canvas,piece);
+}
+function compositeAssemblyThumb(canvas, piece) {
+  const CELL=8; // px per tile in thumbnail
+  canvas.width=piece.gridW*CELL; canvas.height=piece.gridH*CELL;
+  const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,canvas.width,canvas.height);
+  piece.placements.forEach(pl => {
+    const img=cachedSheets[pl.sheetId]; if(!img||!img.complete||!img.naturalWidth) return;
+    const dstW=(pl.srcW/TILE)*CELL, dstH=(pl.srcH/TILE)*CELL;
+    ctx.drawImage(img, pl.srcX,pl.srcY,pl.srcW,pl.srcH, pl.gridCol*CELL,pl.gridRow*CELL,dstW,dstH);
+  });
+}
+
+// ── Piece Preview Modal ────────────────────────────────────────────────────────
+const previewModal  = document.getElementById('preview-modal');
+const modalPreviewCanvas = document.getElementById('modal-preview-canvas');
+const previewTitle  = document.getElementById('preview-title');
+const previewMeta   = document.getElementById('preview-meta');
+const previewClose  = document.getElementById('preview-close-btn');
+
+function openPreview(piece) {
+  const MAX_PX = 400; // max canvas dimension in preview
+  previewTitle.textContent = piece.name.toUpperCase();
+
+  if (piece.kind === 'assembled') {
+    previewMeta.textContent = `${piece.category}  ·  ${piece.gridW}×${piece.gridH} grid  ·  🧩 assembly`;
+    const CELL = Math.min(Math.floor(MAX_PX / piece.gridW), Math.floor(MAX_PX / piece.gridH), 32);
+    modalPreviewCanvas.width  = piece.gridW * CELL;
+    modalPreviewCanvas.height = piece.gridH * CELL;
+    const ctx = modalPreviewCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, modalPreviewCanvas.width, modalPreviewCanvas.height);
+
+    const sheetIds = [...new Set(piece.placements.map(p => p.sheetId))];
+    const needed = sheetIds.length;
+    let loaded = 0;
+    const paint = () => {
+      ctx.clearRect(0, 0, modalPreviewCanvas.width, modalPreviewCanvas.height);
+      piece.placements.forEach(pl => {
+        const img = cachedSheets[pl.sheetId];
+        if (!img?.complete || !img.naturalWidth) return;
+        const dstW = (pl.srcW / TILE) * CELL, dstH = (pl.srcH / TILE) * CELL;
+        ctx.drawImage(img, pl.srcX, pl.srcY, pl.srcW, pl.srcH, pl.gridCol * CELL, pl.gridRow * CELL, dstW, dstH);
+      });
+    };
+    sheetIds.forEach(id => ensureSheet(id, () => { loaded++; paint(); }));
+    paint();
+
+  } else {
+    const srcW = piece.cols * TILE, srcH = piece.rows * TILE;
+    previewMeta.textContent = `${piece.category}  ·  ${piece.cols}×${piece.rows} tiles`;
+    const scale = Math.min(MAX_PX / srcW, MAX_PX / srcH, 6);
+    modalPreviewCanvas.width  = Math.round(srcW * scale);
+    modalPreviewCanvas.height = Math.round(srcH * scale);
+    const ctx = modalPreviewCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, modalPreviewCanvas.width, modalPreviewCanvas.height);
+    ensureSheet(piece.sheetId, img => {
+      ctx.drawImage(img, piece.col * TILE, piece.row * TILE, srcW, srcH, 0, 0, modalPreviewCanvas.width, modalPreviewCanvas.height);
+    });
+  }
+  previewModal.classList.add('open');
+}
+
+function closePreview() { previewModal.classList.remove('open'); }
+previewClose.addEventListener('click', closePreview);
+previewModal.addEventListener('click', e => { if (e.target === previewModal) closePreview(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+
+// ── Sheet image cache ─────────────────────────────────────────────────────────
+const cachedSheets = {};
+function ensureSheet(id, onDone) {
+  if(!cachedSheets[id]) {
+    const img=new Image(); img.crossOrigin='anonymous'; img.src=SHEETS[id];
+    cachedSheets[id]=img;
+    img.onload=()=>onDone(img);
+  } else {
+    const img=cachedSheets[id];
+    if(img.complete&&img.naturalWidth) onDone(img);
+    else img.addEventListener('load',()=>onDone(img),{once:true});
+  }
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+function piecesJSON() { return JSON.stringify(pieces,null,2); }
+exportBtn.addEventListener('click', () => {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([piecesJSON()],{type:'application/json'}));
+  a.download='furniture-pieces.json'; a.click(); showToast('✓ Downloaded');
+});
+copyBtn.addEventListener('click', () => { navigator.clipboard.writeText(piecesJSON()).then(()=>showToast('✓ Copied!')); });
+importBtn.addEventListener('click', () => {
+  const input=document.createElement('input'); input.type='file'; input.accept='.json,application/json';
+  input.onchange=async e => {
+    const text=await e.target.files[0].text();
+    try { pieces=JSON.parse(text); if(!Array.isArray(pieces)) throw 0; savePieces(); renderSheet(); showToast(`✓ Imported ${pieces.length} pieces`); }
+    catch { alert('Invalid JSON file'); }
+  }; input.click();
+});
+clearAllBtn.addEventListener('click', () => {
+  if(!confirm(`Delete all ${pieces.length} pieces?`)) return;
+  pieces=[]; savePieces(); renderSheet(); showToast('🗑 Cleared');
+});
+
+// ── Assembly grid controls wired ─────────────────────────────────────────────
+asmWEl.addEventListener('change', ()=>{ asmWEl.value=Math.max(1,parseInt(asmWEl.value)||5); });
+asmHEl.addEventListener('change', ()=>{ asmHEl.value=Math.max(1,parseInt(asmHEl.value)||3); });
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) { toast.textContent=msg; toast.style.display='block'; clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.style.display='none',2400); }
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+sheetSelect.addEventListener('change', ()=>loadSheet(sheetSelect.value));
+zoomSelect.addEventListener('change', ()=>{ zoom=Number(zoomSelect.value); renderSheet(); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadPieces(); renderPiecesList(); updateSync();
+loadSheet(sheetSelect.value);
+setMode('simple');
+</script>
+</body>
+</html>

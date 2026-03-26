@@ -25,6 +25,7 @@ import {
   FURNITURE_CATEGORIES_ORDERED,
   type FurnitureDef,
 } from '@/engine/furnitureDefs';
+import { loadComposerPieces, customPieceSrc, type ComposerPieceDef } from '@/engine/decorationOverlay';
 
 // O(1) lookup: atlas key → full catalog entry (src URL etc.)
 const CATALOG_BY_KEY = new Map<string, Furniture48Entry>(
@@ -208,9 +209,6 @@ export function EditorToolbar() {
 
   const setGridDimensions = useEditorStore((s) => s.setGridDimensions);
 
-  const selectedFurnitureType = useEditorStore((s) => s.selectedFurnitureType);
-  const selectedFurnitureSize = useEditorStore((s) => s.selectedFurnitureSize);
-  const selectedFurnitureAtlasKey = useEditorStore((s) => s.selectedFurnitureAtlasKey);
   const setSelectedFurnitureType = useEditorStore((s) => s.setSelectedFurnitureType);
   const setSelectedFurnitureSize = useEditorStore((s) => s.setSelectedFurnitureSize);
   const setSelectedFurnitureAtlasKey = useEditorStore((s) => s.setSelectedFurnitureAtlasKey);
@@ -224,7 +222,7 @@ export function EditorToolbar() {
   const selectedCanvasFurnitureIdx = useEditorStore((s) => s.selectedCanvasFurnitureIdx);
 
   const [savedFlash, setSavedFlash] = useState(false);
-  const [furnitureBrowserTab, setFurnitureBrowserTab] = useState<'catalog' | 'singles'>('catalog');
+  const [furnitureBrowserTab, setFurnitureBrowserTab] = useState<'catalog' | 'mypieces' | 'singles' | 'handdrawn'>('handdrawn');
 
   function handleSave() {
     void saveLayoutToIDB();
@@ -241,8 +239,6 @@ export function EditorToolbar() {
   const showWallPicker = activeTool === 'wall';
   const showRoomTemplate = activeTool === 'room-template';
 
-  const primaryTools = TOOLS.filter((t) => t.group === 'primary');
-  const advancedTools = TOOLS.filter((t) => t.group === 'advanced');
 
   return (
     <div data-testid="editor-toolbar" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative' }}>
@@ -261,27 +257,14 @@ export function EditorToolbar() {
         <div
           style={{ padding: '4px 10px', borderRadius: 4, fontWeight: 700, letterSpacing: 1, marginRight: 6, background: COLORS.accent, color: '#fff', fontSize: 9 }}
         >
-          ✏️ EDIT MODE
+          🛋 DECORATE
         </div>
 
         {/* Separator */}
         <div style={{ width: 1, height: 28, background: COLORS.border }} />
 
-        {/* Primary tools */}
-        {primaryTools.map((tool) => (
-          <ToolButton
-            key={tool.id}
-            tool={tool}
-            isActive={activeTool === tool.id}
-            onClick={() => setActiveTool(tool.id)}
-          />
-        ))}
-
-        {/* Separator */}
-        <div style={{ width: 1, height: 28, background: COLORS.border }} />
-
-        {/* Advanced tools */}
-        {advancedTools.map((tool) => (
+        {/* Decorate tools — Select, Furniture, Eraser only */}
+        {TOOLS.filter((t) => ['select', 'furniture', 'eraser'].includes(t.id)).map((tool) => (
           <ToolButton
             key={tool.id}
             tool={tool}
@@ -292,11 +275,6 @@ export function EditorToolbar() {
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />
-
-        {/* Grid size */}
-        <span style={{ color: 'rgba(59,130,246,0.5)', fontSize: 9, marginRight: 8 }}>
-          {gridDimensions.cols}×{gridDimensions.rows}
-        </span>
 
         {/* Undo/Redo */}
         <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
@@ -390,12 +368,25 @@ export function EditorToolbar() {
             maxHeight: 280,
           }}
         >
+          {/* Quick workflow guide */}
+          <div style={{ display: 'flex', gap: 8, padding: '6px 12px 2px', background: 'rgba(251,191,36,0.06)', borderBottom: `1px solid rgba(251,191,36,0.15)`, flexShrink: 0 }}>
+            <span style={{ fontSize: 9, color: 'rgba(251,191,36,0.8)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>👁</span>
+              <span><strong>Hide existing:</strong> Hand-drawn tab → click piece</span>
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 9 }}>|</span>
+            <span style={{ fontSize: 9, color: 'rgba(59,186,130,0.8)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>🏢</span>
+              <span><strong>Add new:</strong> Office Catalog → click canvas</span>
+            </span>
+          </div>
+
           {/* Tab switcher */}
           <div style={{ display: 'flex', gap: 0, padding: '8px 12px 4px' }}>
-            {(['catalog', 'singles'] as const).map((tab) => (
+            {(['catalog', 'mypieces', 'singles', 'handdrawn'] as const).map((tab, i, arr) => (
               <button
                 key={tab}
-                onClick={() => setFurnitureBrowserTab(tab)}
+                onClick={() => setFurnitureBrowserTab(tab as typeof furnitureBrowserTab)}
                 style={{
                   padding: '2px 10px',
                   fontSize: 9,
@@ -403,11 +394,14 @@ export function EditorToolbar() {
                   color: furnitureBrowserTab === tab ? '#fff' : COLORS.accent,
                   fontWeight: furnitureBrowserTab === tab ? 'bold' : 'normal',
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: tab === 'catalog' ? '4px 0 0 4px' : '0 4px 4px 0',
+                  borderRadius: i === 0 ? '4px 0 0 4px' : i === arr.length - 1 ? '0 4px 4px 0' : '0',
                   cursor: 'pointer',
                 }}
               >
-                {tab === 'catalog' ? '🏢 Office Catalog' : '📦 All Sprites'}
+                {tab === 'catalog' ? '🏢 Office Catalog'
+                 : tab === 'mypieces' ? '📌 My Pieces'
+                 : tab === 'singles' ? '📦 All Sprites'
+                 : '👁 Hand-drawn'}
               </button>
             ))}
           </div>
@@ -416,20 +410,21 @@ export function EditorToolbar() {
             <FurnitureCatalogBrowser
               selectedKey={selectedFurnitureId}
               onSelect={(def) => {
-                // Use the 16px atlasKey for placement rendering, not the 48px thumbnail key
                 setSelectedFurniture(def.atlasKey);
                 setSelectedFurnitureAtlasKey(def.atlasKey);
                 setSelectedFurnitureSize(def.defaultW, def.defaultH);
-                // Auto-set type from category
                 const typeMap: Record<string, string> = {
                   'Desks': 'desk', 'Chairs & Seating': 'chair', 'Tables': 'table',
                   'Plants': 'plant', 'Storage': 'bookshelf', 'Tech & Screens': 'monitor',
                   'Boards & Signs': 'whiteboard', 'Decor': 'desk', 'Film Studio': 'desk',
                 };
-                const mappedType = typeMap[def.category] ?? 'desk';
-                setSelectedFurnitureType(mappedType as FurnitureItem['type']);
+                setSelectedFurnitureType((typeMap[def.category] ?? 'desk') as FurnitureItem['type']);
               }}
             />
+          )}
+
+          {furnitureBrowserTab === 'mypieces' && (
+            <MyPiecesBrowser />
           )}
 
           {furnitureBrowserTab === 'singles' && (
@@ -441,6 +436,10 @@ export function EditorToolbar() {
                 setSelectedFurnitureSize(3, 3);
               }}
             />
+          )}
+
+          {furnitureBrowserTab === 'handdrawn' && (
+            <HandDrawnPanel />
           )}
         </div>
       )}
@@ -481,18 +480,11 @@ export function EditorToolbar() {
         />
       )}
 
-      {/* Furniture size/type picker */}
+      {/* Furniture Instructions + Scale Picker */}
       {showFurnitureSizePicker && (
-        <FurnitureSizePanel
-          selectedType={selectedFurnitureType}
-          selectedSize={selectedFurnitureSize}
-          atlasKey={selectedFurnitureAtlasKey}
-          onTypeChange={setSelectedFurnitureType}
-          onSizeChange={setSelectedFurnitureSize}
-          onAtlasKeyChange={setSelectedFurnitureAtlasKey}
-          hasSelection={selectedFurnitureId !== null}
-        />
+        <FurniturePlaceBar />
       )}
+
 
       {/* Status bar */}
       <EditorStatusBar
@@ -540,12 +532,365 @@ function ToolButton({
   );
 }
 
+// ── Hand-drawn Piece Catalog ─────────────────────────────────────────────────
+
+const HAND_DRAWN_ROOMS: Array<{ key: string; label: string; color: string; pieces: Array<{ id: string; label: string }> }> = [
+  { key: 'isaac', label: 'Isaac', color: '#60a5fa', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'wallArt', label: 'Wall Art' }, { id: 'clock', label: 'Clock' },
+    { id: 'bookshelf', label: 'Bookshelf' }, { id: 'desk', label: 'Desk' }, { id: 'monitor1', label: 'Monitor 1' },
+    { id: 'monitor2', label: 'Monitor 2 (Green)' }, { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' },
+    { id: 'filingCabinet', label: 'Filing Cabinet' }, { id: 'fileTable', label: 'File Drop Table' },
+    { id: 'plant', label: 'Plant' }, { id: 'trashCan', label: 'Trash Can' },
+  ]},
+  { key: 'billy', label: 'Billy', color: '#fbbf24', pieces: [
+    { id: 'window1', label: 'Window Left' }, { id: 'window2', label: 'Window Right' }, { id: 'wallArt', label: 'Wall Art' },
+    { id: 'clock', label: 'Clock' }, { id: 'bookshelf', label: 'Bookshelf' }, { id: 'desk', label: 'Desk' },
+    { id: 'monitor', label: 'Monitor' }, { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' },
+    { id: 'plant1', label: 'Plant Left' }, { id: 'plant2', label: 'Plant Right' }, { id: 'fileTable', label: 'File Drop Table' },
+    { id: 'filingCabinet', label: 'Filing Cabinet' }, { id: 'trashCan', label: 'Trash Can' },
+  ]},
+  { key: 'patrik', label: 'Patrik', color: '#34d399', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'bookshelf1', label: 'Bookshelf 1' }, { id: 'bookshelf2', label: 'Bookshelf 2' },
+    { id: 'clock', label: 'Clock' }, { id: 'desk', label: 'Desk' }, { id: 'monitor', label: 'Monitor' },
+    { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' }, { id: 'filingCabinet1', label: 'Filing Cabinet 1' },
+    { id: 'filingCabinet2', label: 'Filing Cabinet 2' }, { id: 'fileTable', label: 'File Drop Table' }, { id: 'plant', label: 'Plant' },
+  ]},
+  { key: 'marcos', label: 'Marcos', color: '#a78bfa', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'wallArt1', label: 'Wall Art 1' }, { id: 'wallArt2', label: 'Wall Art 2' },
+    { id: 'bookshelf1', label: 'Bookshelf 1' }, { id: 'bookshelf2', label: 'Bookshelf 2' }, { id: 'clock', label: 'Clock' },
+    { id: 'desk', label: 'Desk' }, { id: 'monitor', label: 'Monitor' }, { id: 'mug', label: 'Coffee Mug' },
+    { id: 'chair', label: 'Chair' }, { id: 'filingCabinet1', label: 'Filing Cabinet 1' }, { id: 'filingCabinet2', label: 'Filing Cabinet 2' },
+    { id: 'fileTable', label: 'File Drop Table' }, { id: 'plant', label: 'Plant' }, { id: 'trashCan', label: 'Trash Can' },
+  ]},
+  { key: 'sandra', label: 'Sandra', color: '#f472b6', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'whiteboard', label: 'Whiteboard' }, { id: 'bookshelf', label: 'Bookshelf' },
+    { id: 'clock', label: 'Clock' }, { id: 'desk', label: 'Desk' }, { id: 'monitor', label: 'Monitor' },
+    { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' }, { id: 'filingCabinet1', label: 'Filing Cabinet 1' },
+    { id: 'filingCabinet2', label: 'Filing Cabinet 2' }, { id: 'fileTable', label: 'File Drop Table' },
+    { id: 'plant', label: 'Plant' }, { id: 'trashCan', label: 'Trash Can' },
+  ]},
+  { key: 'charlie', label: 'Charlie', color: '#fb923c', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'wallArt1', label: 'Wall Art 1' }, { id: 'wallArt2', label: 'Wall Art 2' },
+    { id: 'wallArt3', label: 'Wall Art 3' }, { id: 'table', label: 'Drawing Table' }, { id: 'desk', label: 'Desk' },
+    { id: 'monitor', label: 'Monitor' }, { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' },
+    { id: 'fileTable', label: 'File Drop Table' }, { id: 'plant', label: 'Plant' }, { id: 'trashCan', label: 'Trash Can' },
+  ]},
+  { key: 'wendy', label: 'Wendy', color: '#c084fc', pieces: [
+    { id: 'window', label: 'Window' }, { id: 'whiteboard', label: 'Whiteboard' }, { id: 'wallArt', label: 'Wall Art' },
+    { id: 'clock', label: 'Clock' }, { id: 'desk', label: 'Desk' }, { id: 'monitor', label: 'Monitor' },
+    { id: 'mug', label: 'Coffee Mug' }, { id: 'chair', label: 'Chair' }, { id: 'filingCabinet', label: 'Filing Cabinet' },
+    { id: 'fileTable', label: 'File Drop Table' }, { id: 'couch', label: 'Couch' },
+    { id: 'trashCan', label: 'Trash Can' }, { id: 'plant', label: 'Plant' },
+  ]},
+  { key: 'boardroom', label: 'Board Room', color: '#e2e8f0', pieces: [
+    { id: 'presScreen',  label: 'Presentation Screen' },
+    { id: 'whiteboard',  label: 'Whiteboard' },
+    { id: 'sconceL',     label: 'Wall Sconce Left' },
+    { id: 'sconceR',     label: 'Wall Sconce Right' },
+    { id: 'table',       label: 'Conference Table' },
+    { id: 'chairs',      label: 'Exec Chairs' },
+    { id: 'waterCooler', label: 'Water Cooler' },
+  ]},
+];
+
+// ── Placed Decoration Count Badge ────────────────────────────────────────────
+
+function PlacedCountBadge() {
+  const count = useEditorStore((s) => s.placedDecorations.length);
+  const clear = useEditorStore((s) => s.clearPlacedDecorations);
+  if (count === 0) return null;
+  return (
+    <button
+      onClick={clear}
+      style={{ fontSize: 9, padding: '2px 8px', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap' }}
+      title="Remove all sprite-placed furniture"
+    >
+      🗑 Clear {count} placed
+    </button>
+  );
+}
+
+// ── Furniture Place Bar (instructions + size picker) ─────────────────────────
+
+const SCALE_OPTIONS = [
+  { value: 1,   label: '1×' },
+  { value: 1.5, label: '1.5×' },
+  { value: 2,   label: '2×' },
+  { value: 3,   label: '3×' },
+  { value: 4,   label: '4×' },
+];
+
+function FurniturePlaceBar() {
+  const scale    = useEditorStore((s) => s.decorScaleFactor);
+  const setScale = useEditorStore((s) => s.setDecorScaleFactor);
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '6px 14px',
+      background: 'rgba(59,130,246,0.05)', borderTop: '1px solid rgba(59,130,246,0.12)', fontSize: 9 }}>
+
+      {/* Instructions */}
+      <span style={{ color: '#60a5fa', fontWeight: 700, letterSpacing: 1, flexShrink: 0 }}>HOW TO PLACE</span>
+      <span style={{ color: 'rgba(255,255,255,0.5)' }}>1. Pick a piece above</span>
+      <span style={{ color: 'rgba(255,255,255,0.5)' }}>2. <strong style={{color:'#fbbf24'}}>Drag</strong> onto canvas</span>
+      <span style={{ color: 'rgba(255,255,255,0.5)' }}>3. <strong style={{color:'#a78bfa'}}>Drag placed</strong> piece to move it</span>
+      <span style={{ color: 'rgba(255,255,255,0.5)' }}>4. <strong style={{color:'#f87171'}}>Right-click</strong> to remove</span>
+
+      {/* Divider */}
+      <span style={{ width: 1, height: 16, background: 'rgba(59,130,246,0.3)', flexShrink: 0 }} />
+
+      {/* Scale picker */}
+      <span style={{ color: '#60a5fa', fontWeight: 700, letterSpacing: 1, flexShrink: 0 }}>SIZE</span>
+      <div style={{ display: 'flex', gap: 2 }}>
+        {SCALE_OPTIONS.map((opt, i) => (
+          <button
+            key={opt.value}
+            onClick={() => setScale(opt.value)}
+            style={{
+              padding: '2px 8px',
+              fontSize: 9,
+              fontWeight: scale === opt.value ? 700 : 400,
+              background: scale === opt.value ? COLORS.accent : 'rgba(59,130,246,0.15)',
+              color: scale === opt.value ? '#fff' : COLORS.accent,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: i === 0 ? '4px 0 0 4px' : i === SCALE_OPTIONS.length - 1 ? '0 4px 4px 0' : '0',
+              cursor: 'pointer',
+            }}
+            title={`Place furniture at ${opt.label} scale`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <PlacedCountBadge />
+    </div>
+  );
+}
+
+
+// ── Hand-drawn Visibility Panel ──────────────────────────────────────────────
+
+function HandDrawnPanel() {
+  const hiddenHandDrawn = useEditorStore((s) => s.hiddenHandDrawn);
+  const toggleHiddenHandDrawn = useEditorStore((s) => s.toggleHiddenHandDrawn);
+  const showAllHandDrawn = useEditorStore((s) => s.showAllHandDrawn);
+  const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
+
+  const totalHidden = hiddenHandDrawn.size;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, maxHeight: 260 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px 4px', flexShrink: 0 }}>
+        <span style={{ fontSize: 9, color: COLORS.accent, fontWeight: 700, letterSpacing: 1 }}>
+          HAND-DRAWN LAYERS {totalHidden > 0 && <span style={{ color: '#f97316', marginLeft: 4 }}>({totalHidden} hidden)</span>}
+        </span>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {totalHidden > 0 && (
+            <button
+              onClick={showAllHandDrawn}
+              style={{ fontSize: 9, padding: '2px 8px', background: 'rgba(249,115,22,0.2)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, cursor: 'pointer' }}
+            >
+              👁 Show All
+            </button>
+          )}
+          <PlacedCountBadge />
+        </div>
+      </div>
+
+      {/* Room list */}
+      <div style={{ overflowY: 'auto', flex: 1, padding: '0 12px 8px' }}>
+        {HAND_DRAWN_ROOMS.map((room) => {
+          const hiddenInRoom = room.pieces.filter((p) => hiddenHandDrawn.has(`${room.key}.${p.id}`)).length;
+          const isExpanded = expandedRoom === room.key;
+          return (
+            <div key={room.key} style={{ marginBottom: 3 }}>
+              {/* Room header row */}
+              <button
+                onClick={() => setExpandedRoom(isExpanded ? null : room.key)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 6px', background: isExpanded ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)', border: `1px solid ${isExpanded ? COLORS.border : 'transparent'}`, borderRadius: 3, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: room.color, flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ fontSize: 9, color: room.color, fontWeight: 700 }}>{room.label}</span>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{room.pieces.length} pieces</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {hiddenInRoom > 0 && (
+                    <span style={{ fontSize: 8, color: '#f97316', background: 'rgba(249,115,22,0.15)', borderRadius: 2, padding: '0 4px' }}>
+                      {hiddenInRoom} hidden
+                    </span>
+                  )}
+                  <span style={{ fontSize: 9, color: COLORS.accent }}>{isExpanded ? '▲' : '▼'}</span>
+                </span>
+              </button>
+
+              {/* Piece list */}
+              {isExpanded && (
+                <div style={{ paddingLeft: 8, paddingTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {room.pieces.map((piece) => {
+                    const fullId = `${room.key}.${piece.id}`;
+                    const isHidden = hiddenHandDrawn.has(fullId);
+                    return (
+                      <button
+                        key={piece.id}
+                        onClick={() => toggleHiddenHandDrawn(fullId)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px', background: isHidden ? 'rgba(249,115,22,0.08)' : 'transparent', border: 'none', borderRadius: 2, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                        title={isHidden ? `Show "${piece.label}"` : `Hide "${piece.label}"`}
+                      >
+                        <span style={{ fontSize: 11, opacity: isHidden ? 0.35 : 1, flexShrink: 0 }}>{isHidden ? '🚫' : '👁'}</span>
+                        <span style={{ fontSize: 9, color: isHidden ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', textDecoration: isHidden ? 'line-through' : 'none' }}>
+                          {piece.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Sprite Preview ──────────────────────────────────────────────────────────
 
 /** Renders a sprite frame from the atlas onto a small canvas. */
-// ── Furniture 48×48 Browser ─────────────────────────────────────────────────
+// ── My Pieces Browser (from Furniture Composer) ─────────────────────────────
+
+/** Renders a single composer-piece thumbnail (simple or assembled). */
+function ComposerThumb({ piece, size }: { piece: ComposerPieceDef; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => onSheetLoaded(() => setTick(t => t + 1)), []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, size, size);
+
+    if (piece.kind === 'assembled') {
+      // Composite: render each placement at 8px/tile scale
+      const CELL = 8;
+      const totalW = piece.gridW * CELL;
+      const totalH = piece.gridH * CELL;
+      const sc = Math.min(size / totalW, size / totalH);
+      const ox = Math.round((size - totalW * sc) / 2);
+      const oy = Math.round((size - totalH * sc) / 2);
+      for (const p of piece.placements) {
+        const sheet = getEnvironmentSheetById(p.sheetId);
+        if (!sheet?.complete || !sheet.naturalWidth) continue;
+        const spW = (p.srcW / 48) * CELL * sc;
+        const spH = (p.srcH / 48) * CELL * sc;
+        ctx.drawImage(sheet, p.srcX, p.srcY, p.srcW, p.srcH,
+          ox + p.gridCol * CELL * sc, oy + p.gridRow * CELL * sc, spW, spH);
+      }
+    } else {
+      // Simple rectangular crop
+      const sheet = getEnvironmentSheetById(piece.sheetId);
+      if (!sheet?.complete || !sheet.naturalWidth) {
+        ctx.fillStyle = 'rgba(59,130,246,0.15)';
+        ctx.fillRect(0, 0, size, size);
+        return;
+      }
+      const src = customPieceSrc(piece);
+      const scale = Math.min(size / src.w, size / src.h);
+      const dw = Math.round(src.w * scale);
+      const dh = Math.round(src.h * scale);
+      ctx.drawImage(sheet, src.x, src.y, src.w, src.h,
+        Math.round((size - dw) / 2), Math.round((size - dh) / 2), dw, dh);
+    }
+  });
+
+  return <canvas ref={canvasRef} width={size} height={size} style={{ imageRendering: 'pixelated' }} />;
+}
+
+/** Shows all pieces defined in furniture-composer.html (stored in localStorage). */
+function MyPiecesBrowser() {
+  const [pieces, setPieces] = useState<ComposerPieceDef[]>(() => loadComposerPieces());
+
+  useEffect(() => {
+    const handler = () => setPieces(loadComposerPieces());
+    window.addEventListener('focus', handler);
+    return () => window.removeEventListener('focus', handler);
+  }, []);
+
+  if (pieces.length === 0) {
+    return (
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+          No pieces defined yet. Open the Furniture Composer to create some:
+        </p>
+        <a
+          href="/furniture-composer.html"
+          target="_blank"
+          rel="noreferrer"
+          style={{ fontSize: 10, color: COLORS.accent, border: `1px solid ${COLORS.border}`,
+            borderRadius: 4, padding: '5px 10px', textDecoration: 'none', textAlign: 'center' }}
+        >
+          🔧 Open Furniture Composer ↗
+        </a>
+        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
+          In the composer: pick a sheet → click & drag to select tiles → name the piece → Save.
+          Come back here and the pieces appear automatically.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+      <div style={{ padding: '4px 12px 2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ fontSize: 9, color: '#6ee7b7' }}>{pieces.length} piece{pieces.length !== 1 ? 's' : ''} from Composer</span>
+        <a href="/furniture-composer.html" target="_blank" rel="noreferrer"
+          style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>
+          Open composer →
+        </a>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))',
+        gap: 4, padding: '4px 12px 8px', overflowY: 'auto', flex: 1 }}>
+        {pieces.map((piece) => (
+          <button
+            key={piece.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('composer-piece-id', piece.id);
+              e.dataTransfer.effectAllowed = 'copy';
+              useEditorStore.getState().setDecorDragCustomDef(piece);
+            }}
+            onDragEnd={() => {
+              useEditorStore.getState().setDecorDragCustomDef(null);
+              useEditorStore.getState().setDecorGhostState(null);
+            }}
+            title={`${piece.name} — ${piece.kind === 'assembled' ? `${piece.gridW}×${piece.gridH} grid` : `${piece.cols}×${piece.rows} tiles`} — ${piece.category}\nDrag onto canvas to place`}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'flex-end', gap: 2, padding: 4,
+              background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)',
+              borderRadius: 4, cursor: 'grab', minHeight: 72 }}
+          >
+            <ComposerThumb piece={piece} size={52} />
+            <span style={{ fontSize: 7, color: '#6ee7b7', textAlign: 'center',
+              lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden',
+              textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {piece.name}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: '4px 12px 6px', fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', flexShrink: 0 }}>
+        👆 Drag piece onto canvas to place • Right-click placed piece to remove
+      </div>
+    </div>
+  );
+}
 
 // ── Office Catalog Browser ───────────────────────────────────────────────────
+
 
 function FurnitureCatalogBrowser({
   selectedKey,
@@ -614,10 +959,20 @@ function FurnitureCatalogBrowser({
           return (
             <button
               key={def.atlasKey48}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('furniture-def-key', def.atlasKey);
+                e.dataTransfer.effectAllowed = 'copy';
+                useEditorStore.getState().setDecorDragDef(def);
+              }}
+              onDragEnd={() => {
+                useEditorStore.getState().setDecorDragDef(null);
+                useEditorStore.getState().setDecorGhostState(null);
+              }}
               onClick={() => onSelect(def)}
               onMouseEnter={() => setHoveredKey(def.atlasKey48)}
               onMouseLeave={() => setHoveredKey(null)}
-              title={`${def.name}${def.description ? '\n' + def.description : ''}\n${def.defaultW}×${def.defaultH} tiles`}
+              title={`Drag onto the canvas to place\n${def.name}${def.description ? '\n' + def.description : ''}\n${def.defaultW}×${def.defaultH} tiles`}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -628,7 +983,7 @@ function FurnitureCatalogBrowser({
                 background: isSelected ? 'rgba(59,130,246,0.35)' : 'rgba(59,130,246,0.06)',
                 border: isSelected ? `2px solid ${COLORS.accent}` : '1px solid rgba(59,130,246,0.15)',
                 borderRadius: 4,
-                cursor: 'pointer',
+                cursor: 'grab',
                 minHeight: 72,
               }}
             >
@@ -650,6 +1005,10 @@ function FurnitureCatalogBrowser({
             </button>
           );
         })}
+      </div>
+      {/* Drag hint */}
+      <div style={{ padding: '4px 12px 6px', fontSize: 8, color: 'rgba(255,255,255,0.25)', textAlign: 'center', flexShrink: 0 }}>
+        👆 Drag piece onto canvas to place &bull; Right-click placed piece to remove
       </div>
     </div>
   );
@@ -812,14 +1171,20 @@ function SpritePreview({ atlasKey, size = 28 }: { atlasKey: string; size?: numbe
       return;
     }
 
-    // Draw the sprite frame scaled to the preview size
+    // Draw the sprite frame scaled proportionally to fit the preview box
     // w=0/h=0 = full-image sentinel (48×48 Singles)
     const { x, y, w, h } = entry.frame;
     const srcW = w === 0 ? sheet.naturalWidth  : w;
     const srcH = h === 0 ? sheet.naturalHeight : h;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, size, size);
-    ctx.drawImage(sheet, x, y, srcW, srcH, 0, 0, size, size);
+    // Scale proportionally to fit — maintains correct assembly shape
+    const scale = Math.min(size / srcW, size / srcH);
+    const dstW = Math.round(srcW * scale);
+    const dstH = Math.round(srcH * scale);
+    const offsetX = Math.round((size - dstW) / 2);
+    const offsetY = Math.round((size - dstH) / 2);
+    ctx.drawImage(sheet, x, y, srcW, srcH, offsetX, offsetY, dstW, dstH);
   }, [atlasKey, size, tick]);
 
   return (

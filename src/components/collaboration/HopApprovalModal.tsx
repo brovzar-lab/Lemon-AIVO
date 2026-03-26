@@ -31,7 +31,7 @@ export function HopApprovalModal() {
   }
 
   return (
-    <div style={{
+    <div data-testid="hop-approval-modal" style={{
       position: 'fixed',
       inset: 0,
       zIndex: 1000,

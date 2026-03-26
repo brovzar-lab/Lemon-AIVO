@@ -35,7 +35,7 @@ export function ZoomControls() {
   };
 
   return (
-    <div style={{
+    <div data-testid="zoom-controls" style={{
       position: 'absolute', bottom: 20, right: 20, zIndex: 10,
       display: 'flex', flexDirection: 'column', gap: 3,
     }}>

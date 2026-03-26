@@ -52,7 +52,7 @@ let gracePeriod = 10;
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Stand tile one row south of the water cooler at (16, 31) — confirmed walkable (hallway FLOOR) */
-const WATER_COOLER_STAND = { col: 22, row: 27 };
+const WATER_COOLER_STAND = { col: 16, row: 19 };
 
 /** All 6 agent IDs (room IDs match agent IDs by convention) */
 const AGENT_IDS = ['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie'] as const;
@@ -122,8 +122,10 @@ export function tickIdleBehaviors(dt: number): void {
 
   for (const [agentId, s] of agentStates) {
     if (s.suspended) {
-      // Resume check: BILLY has left and agent is idle at their desk
-      if (activeRoomId !== agentId) {
+      // Resume check: BILLY has left the agent's room AND we are not in a war-room meeting.
+      // During war-room gathering, agents stay suspended so idleBehavior cannot
+      // override the boardroom walk with a water-cooler trip or desk return.
+      if (activeRoomId !== agentId && activeRoomId !== 'war-room') {
         const ch = characters.find((c) => c.id === agentId);
         if (ch && ch.state === 'idle' && ch.path.length === 0) {
           resumeIdleBehavior(agentId);
@@ -158,7 +160,7 @@ export function tickIdleBehaviors(dt: number): void {
  * - Clears stretch emote
  * - Forces BFS return to seatTile if agent is mid-walk
  */
-export function interruptIdleBehavior(agentId: string): void {
+export function interruptIdleBehavior(agentId: string, noHomeWalk = false): void {
   const s = agentStates.get(agentId);
   if (!s) return;
 
@@ -174,17 +176,28 @@ export function interruptIdleBehavior(agentId: string): void {
   s.phase = 'suspended';
   s.suspended = true;
 
-  // If agent is mid-walk, send them home
-  const { characters } = useOfficeStore.getState();
-  const ch = characters.find((c) => c.id === agentId);
-  if (ch && ch.state === 'walk') {
-    const room = ROOMS.find((r) => r.id === agentId);
-    if (room) {
-      startWalk(agentId, room.seatTile.col, room.seatTile.row, OFFICE_TILE_MAP);
+  // If agent is mid-walk, send them home — unless noHomeWalk is set
+  // (used by gatherAgentsToWarRoom so agents aren't redirected to desk
+  // just before being told to walk to their boardroom seat)
+  if (!noHomeWalk) {
+    const { characters } = useOfficeStore.getState();
+    const ch = characters.find((c) => c.id === agentId);
+    if (ch && ch.state === 'walk') {
+      const room = ROOMS.find((r) => r.id === agentId);
+      if (room) {
+        startWalk(agentId, room.seatTile.col, room.seatTile.row, OFFICE_TILE_MAP);
+      }
+    } else if (ch) {
+      // Ensure agent is visibly idle (not frozen in 'work' animation)
+      ch.state = 'idle';
     }
-  } else if (ch) {
-    // Ensure agent is visibly idle (not frozen in 'work' animation)
-    ch.state = 'idle';
+  } else {
+    // noHomeWalk: just ensure the agent stops any 'work' animation
+    const { characters } = useOfficeStore.getState();
+    const ch = characters.find((c) => c.id === agentId);
+    if (ch && ch.state === 'work') {
+      ch.state = 'idle';
+    }
   }
 }
 

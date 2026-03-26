@@ -8,18 +8,25 @@ import type { Camera, TileCoord } from './types';
 import { OFFICE_TILE_MAP } from './officeLayout';
 
 /**
- * Computes the zoom level at which the entire office map fits within the
- * given canvas dimensions. Returns a raw float with a floor of 0.5 to
- * prevent absurdly small zoom on very large screens.
+ * Computes the zoom level at which the office content fits within the
+ * given canvas dimensions with a small padding margin.
+ *
+ * Uses the actual content bounding box (cols 0-44, rows 2-37 = 45×36)
+ * rather than the full 45×38 map that includes blank border rows.
+ * Adds a 2-tile padding on each side so the office breathes slightly.
+ * Returns a raw float with a floor of 0.5.
  */
 export function computeAutoFitZoom(canvasWidth: number, canvasHeight: number): number {
-  const mapCols = OFFICE_TILE_MAP[0]!.length;
-  const mapRows = OFFICE_TILE_MAP.length;
-  // No padding — fill the entire canvas with the office map
-  const mapPixelW = mapCols * TILE_SIZE;
-  const mapPixelH = mapRows * TILE_SIZE;
+  // Content bounding box: rooms span cols 0-44 (45 cols), rows 2-37 (36 rows)
+  const CONTENT_COLS = 45;
+  const CONTENT_ROWS = 36;
+  // 2 tile padding on each side so the office isn't flush against panel edges
+  const PADDING_TILES = 2;
 
-  return Math.max(0.5, Math.min(canvasWidth / mapPixelW, canvasHeight / mapPixelH));
+  const contentPixelW = (CONTENT_COLS + PADDING_TILES * 2) * TILE_SIZE;
+  const contentPixelH = (CONTENT_ROWS + PADDING_TILES * 2) * TILE_SIZE;
+
+  return Math.max(0.5, Math.min(canvasWidth / contentPixelW, canvasHeight / contentPixelH));
 }
 
 /**

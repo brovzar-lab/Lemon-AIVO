@@ -571,15 +571,175 @@ export function drawLabelBg(ctx: CanvasRenderingContext2D, text: string, x: numb
   ctx.fillText(text, x, y);
 }
 
-// ─── Rug ───
-export function drawRug(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-  rect(ctx, x, y, w, h, P.rugBorder);
-  rect(ctx, x + 4, y + 4, w - 8, h - 8, P.rugPurple);
-  rect(ctx, x + 8, y + 8, w - 16, h - 16, P.rugLight);
-  rect(ctx, x + 12, y + 12, w - 24, h - 24, P.rugPurple);
-  rect(ctx, x + 16, y + 16, w - 32, h - 32, P.rugLight);
-  rect(ctx, x + 6, y + 6, 4, 4, P.bookYellow);
-  rect(ctx, x + w - 10, y + 6, 4, 4, P.bookYellow);
-  rect(ctx, x + 6, y + h - 10, 4, 4, P.bookYellow);
-  rect(ctx, x + w - 10, y + h - 10, 4, 4, P.bookYellow);
+/**
+ * Draws a small dark-brown document table in pixelScene coordinates.
+ * Documents appear stacked on top of it when files are uploaded to the agent.
+ */
+export function drawFileTable(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number = 48,
+  h: number = 26,
+): void {
+  const sx = x | 0;
+  const sy = y | 0;
+  const sw = w | 0;
+  const sh = h | 0;
+  const legH = 10;
+
+  // Drop shadow beneath legs
+  ctx.globalAlpha = 0.2;
+  rect(ctx, sx + 4, sy + sh + legH + 2, sw - 6, 4, '#000000');
+  ctx.globalAlpha = 1;
+
+  // Legs
+  rect(ctx, sx + 4,      sy + sh, 4, legH, '#2C1A0E');
+  rect(ctx, sx + sw - 8, sy + sh, 4, legH, '#2C1A0E');
+
+  // Table underside edge (3-D depth)
+  rect(ctx, sx, sy + sh - 2, sw, 4, '#2C1A0E');
+
+  // Table surface (rich brown)
+  rect(ctx, sx, sy, sw, sh - 2, '#5C3317');
+
+  // Top highlight
+  rect(ctx, sx + 1, sy + 1, sw - 2, 2, '#7A4A28');
+
+  // Wood grain lines
+  for (let gx = sx + 8; gx < sx + sw - 4; gx += 10) {
+    ctx.globalAlpha = 0.15;
+    rect(ctx, gx, sy + 2, 1, sh - 6, '#1A0D00');
+  }
+  ctx.globalAlpha = 1;
+
+  // Border
+  ctx.strokeStyle = '#1A0D00';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 3);
 }
+// ─── Small File-Drop Table ───
+/** A compact side table shown in each office as a visual file-drop target. */
+export function drawSmallFileTable(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  // Legs
+  rect(ctx, x + 2,  y + 20, 3, 6, P.tableDark);
+  rect(ctx, x + 19, y + 20, 3, 6, P.tableDark);
+  // Surface
+  rect(ctx, x,      y,      24, 20, P.tableWood);
+  rect(ctx, x + 2,  y + 2,  20, 16, P.deskLight);
+  rect(ctx, x + 4,  y + 4,  16,  2, P.tableWood);
+  rect(ctx, x,      y + 20, 24,  3, P.tableDark);
+  // Small paper icon on surface (matches renderFileIcons look)
+  rect(ctx, x + 8,  y + 5,   8, 10, '#ffffff');
+  rect(ctx, x + 8,  y + 5,   8,  2, '#ef4444'); // PDF red header bar
+  rect(ctx, x + 10, y + 8,   4,  1, '#cccccc');
+  rect(ctx, x + 10, y + 10,  4,  1, '#cccccc');
+  rect(ctx, x + 14, y + 5,   2,  2, '#e0e0e0'); // folded corner
+}
+
+// ─── Room Header Banner ───
+/**
+ * Draws a premium pixel-art room header above the room top wall.
+ * Replaces the plain drawLabelBg + drawLabel combo with a styled banner:
+ *   - Dark rounded pill background with subtle accent tint
+ *   - Bold pixel-font agent name in accent color
+/**
+ * Truncate `text` with an ellipsis so it fits within `maxPx` pixels.
+ * Returns the (possibly truncated) string.
+ */
+function clipText(ctx: CanvasRenderingContext2D, text: string, maxPx: number): string {
+  if (ctx.measureText(text).width <= maxPx) return text;
+  const ellipsis = '...';
+  let truncated = text;
+  while (truncated.length > 0 && ctx.measureText(truncated + ellipsis).width > maxPx) {
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + ellipsis;
+}
+
+/**
+ * Draws a pixel-art name + role pill header above a room:
+ *   - Bold accent-coloured name on top
+ *   - Smaller role label underneath in cream
+ *   - Decorative bracket-dash rule lines either side of the name
+ *
+ * @param maxWidth  Optional max pixel width for the pill.
+ *                  Pass the room width to prevent text bleeding outside the box.
+ */
+export function drawRoomHeader(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  role: string,
+  cx: number,
+  y: number,
+  accentHex: string = '#fbbf24',
+  maxWidth?: number,
+): void {
+  const nameSize = 10;
+  const roleSize = 7;
+  const padX = 14; // horizontal padding inside pill
+  const padY = 5;
+
+  // Fixed pill width anchored to room width — never dynamic from text
+  const pillW = Math.min(maxWidth ?? 180, 220);
+  const pillH = nameSize + roleSize + padY * 3 + 4;
+  const px = (cx - pillW / 2) | 0;
+  const py = Math.max(2, (y - pillH - 6) | 0);
+
+  // Max text area inside the pill
+  const maxTextW = pillW - padX * 2;
+
+  // Measure and clip name
+  ctx.font = `${nameSize}px 'Press Start 2P', monospace`;
+  ctx.textAlign = 'center';
+  const displayName = clipText(ctx, name, maxTextW);
+
+  // Measure and clip role
+  ctx.font = `${roleSize}px 'Press Start 2P', monospace`;
+  const displayRole = clipText(ctx, role, maxTextW);
+
+  // Drop shadow
+  ctx.globalAlpha = 0.22;
+  rect(ctx, px + 3, py + 4, pillW, pillH, '#000000');
+  ctx.globalAlpha = 1;
+
+  // Pill background
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(px, py, pillW, pillH, 5);
+    ctx.fillStyle = '#0f1120';
+    ctx.fill();
+  } else {
+    rect(ctx, px, py, pillW, pillH, '#0f1120');
+  }
+
+  // Accent top strip
+  rect(ctx, px + 4, py, pillW - 8, 2, accentHex);
+
+  // Accent side glows
+  ctx.globalAlpha = 0.3;
+  rect(ctx, px, py + 2, 3, pillH - 4, accentHex);
+  rect(ctx, px + pillW - 3, py + 2, 3, pillH - 4, accentHex);
+  ctx.globalAlpha = 1;
+
+  // Name row Y
+  const nameY = py + padY + nameSize;
+
+  // Name shadow
+  ctx.font = `${nameSize}px 'Press Start 2P', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillText(displayName, cx + 1, nameY + 1);
+  // Name
+  ctx.fillStyle = accentHex;
+  ctx.fillText(displayName, cx, nameY);
+
+  // Separator line
+  rect(ctx, px + 8, nameY + 3, pillW - 16, 1, '#1e2240');
+
+  // Role
+  ctx.font = `${roleSize}px 'Press Start 2P', monospace`;
+  ctx.fillStyle = '#c8c4b0';
+  ctx.fillText(displayRole, cx, nameY + roleSize + padY + 1);
+}
+

@@ -23,7 +23,7 @@ export function CollabSummaryView({
   }
 
   return (
-    <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div data-testid="collab-summary-view" style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div className="section-title" style={{ color: 'var(--accent-gold)' }}>
         SUMMARY
       </div>

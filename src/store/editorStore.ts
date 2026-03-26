@@ -7,6 +7,9 @@
  */
 import { create } from 'zustand';
 import type { FurnitureItem } from '@/engine/officeLayout';
+import type { FurnitureDef } from '@/engine/furnitureDefs';
+import type { PlacedDecoration, GhostState, ComposerPieceDef } from '@/engine/decorationOverlay';
+import { loadPlacedDecorations, savePlacedDecorations, hitTestDecoration } from '@/engine/decorationOverlay';
 
 // ── Tool Types ──────────────────────────────────────────────────────────────
 
@@ -83,7 +86,41 @@ export interface EditorState {
   setSelectedFurnitureSize: (width: number, height: number) => void;
   setSelectedFurnitureAtlasKey: (key: string) => void;
   setSelectedRoomTemplate: (id: string | null) => void;
+  // Hand-drawn piece visibility (persists to localStorage)
+  hiddenHandDrawn: Set<string>;
+  toggleHiddenHandDrawn: (id: string) => void;
+  showAllHandDrawn: () => void;
   setGhostPreviewTile: (tile: { col: number; row: number } | null) => void;
+
+  // ── Placed Decorations (Decorate Mode overlay) ──────────────────────────
+  placedDecorations: PlacedDecoration[];
+  addPlacedDecoration: (dec: PlacedDecoration) => void;
+  removePlacedDecoration: (id: string) => void;
+  removeDecorationAtWorld: (worldX: number, worldY: number) => void;
+  clearPlacedDecorations: () => void;
+
+  // Move a placed decoration to a new world position (for drag-to-move)
+  movePlacedDecoration: (id: string, worldX: number, worldY: number) => void;
+
+  // Drag-to-move state — item currently being dragged from its placed position
+  decorMoveDrag: { dec: PlacedDecoration; grabOffsetX: number; grabOffsetY: number } | null;
+  setDecorMoveDrag: (state: { dec: PlacedDecoration; grabOffsetX: number; grabOffsetY: number } | null) => void;
+
+  // Drag state — which catalog item is being dragged from the panel
+  decorDragDef: FurnitureDef | null;
+  setDecorDragDef: (def: FurnitureDef | null) => void;
+
+  // Drag state — user-defined piece from Furniture Composer being dragged
+  decorDragCustomDef: ComposerPieceDef | null;
+  setDecorDragCustomDef: (def: ComposerPieceDef | null) => void;
+
+  // Ghost preview during drag
+  decorGhostState: GhostState | null;
+  setDecorGhostState: (ghost: GhostState | null) => void;
+
+  // Scale multiplier applied when placing new decorations (1, 1.5, 2, 3)
+  decorScaleFactor: number;
+  setDecorScaleFactor: (scale: number) => void;
 }
 
 const MAX_UNDO = 50;
@@ -107,11 +144,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedRoomTemplate: null,
   ghostPreviewTile: null,
 
+  hiddenHandDrawn: new Set<string>(
+    (() => {
+      try {
+        const raw = localStorage.getItem('lemon.hiddenHandDrawn');
+        return raw ? (JSON.parse(raw) as string[]) : [];
+      } catch { return []; }
+    })()
+  ),
+
   toggleEditorMode: () =>
     set((s) => ({
       editorMode: !s.editorMode,
-      // Reset tool state when toggling
-      activeTool: 'select',
+      activeTool: 'furniture',
       selectedFurnitureId: null,
       furnitureCategory: null,
       selectedCanvasFurnitureIdx: null,
@@ -120,7 +165,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setEditorMode: (mode) =>
     set({
       editorMode: mode,
-      activeTool: 'select',
+      activeTool: 'furniture',
       selectedFurnitureId: null,
       furnitureCategory: null,
       selectedCanvasFurnitureIdx: null,
@@ -184,4 +229,72 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setSelectedRoomTemplate: (id) => set({ selectedRoomTemplate: id, ghostPreviewTile: null }),
   setGhostPreviewTile: (tile) => set({ ghostPreviewTile: tile }),
+
+  toggleHiddenHandDrawn: (id) =>
+    set((s) => {
+      const next = new Set(s.hiddenHandDrawn);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem('lemon.hiddenHandDrawn', JSON.stringify([...next])); } catch {}
+      return { hiddenHandDrawn: next };
+    }),
+
+  showAllHandDrawn: () => {
+    try { localStorage.removeItem('lemon.hiddenHandDrawn'); } catch {}
+    set({ hiddenHandDrawn: new Set() });
+  },
+
+  // ── Placed Decorations ───────────────────────────────────────────────────
+  placedDecorations: loadPlacedDecorations(),
+
+  addPlacedDecoration: (dec) =>
+    set((s) => {
+      const next = [...s.placedDecorations, dec];
+      savePlacedDecorations(next);
+      return { placedDecorations: next };
+    }),
+
+  removePlacedDecoration: (id) =>
+    set((s) => {
+      const next = s.placedDecorations.filter((d) => d.id !== id);
+      savePlacedDecorations(next);
+      return { placedDecorations: next };
+    }),
+
+  removeDecorationAtWorld: (worldX, worldY) =>
+    set((s) => {
+      const hitId = hitTestDecoration(s.placedDecorations, worldX, worldY);
+      if (!hitId) return {};
+      const next = s.placedDecorations.filter((d) => d.id !== hitId);
+      savePlacedDecorations(next);
+      return { placedDecorations: next };
+    }),
+
+  clearPlacedDecorations: () => {
+    savePlacedDecorations([]);
+    set({ placedDecorations: [] });
+  },
+
+  movePlacedDecoration: (id, worldX, worldY) =>
+    set((s) => {
+      const next = s.placedDecorations.map((d) =>
+        d.id === id ? { ...d, worldX, worldY } : d
+      );
+      savePlacedDecorations(next);
+      return { placedDecorations: next };
+    }),
+
+  decorMoveDrag: null,
+  setDecorMoveDrag: (state) => set({ decorMoveDrag: state }),
+
+  decorDragDef: null,
+  setDecorDragDef: (def) => set({ decorDragDef: def }),
+
+  decorDragCustomDef: null,
+  setDecorDragCustomDef: (def) => set({ decorDragCustomDef: def }),
+
+  decorGhostState: null,
+  setDecorGhostState: (ghost) => set({ decorGhostState: ghost }),
+
+  decorScaleFactor: 2,
+  setDecorScaleFactor: (scale) => set({ decorScaleFactor: scale }),
 }));

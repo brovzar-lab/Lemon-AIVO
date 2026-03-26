@@ -69,7 +69,7 @@ export function FileCabinetModal({ agentId, onClose, onViewFile }: FileCabinetMo
   }, []);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div data-testid="file-cabinet-modal" className="modal-backdrop" onClick={onClose}>
       <div
         className={`modal-container file-cabinet-modal ${isDragOver ? 'dragover' : ''}`}
         onClick={(e) => e.stopPropagation()}

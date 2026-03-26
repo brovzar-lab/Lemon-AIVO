@@ -95,7 +95,7 @@ export function DealActions({ dealId, dealName, dealStatus, onClose }: DealActio
   };
 
   return (
-    <div ref={dropdownRef} onClick={(e) => e.stopPropagation()} style={{
+    <div data-testid="deal-actions" ref={dropdownRef} onClick={(e) => e.stopPropagation()} style={{
       position: 'absolute', right: 6, top: 24, width: 140,
       backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)',
       borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', zIndex: 30,

@@ -12,6 +12,8 @@ import type { FurnitureItem } from './officeLayout';
 import { TileType } from './types';
 import type { EditorAction } from '@/store/editorStore';
 import { saveLayoutToIDB } from './layoutSerializer';
+import { hitTestDecoration } from './decorationOverlay';
+
 
 // ── Room Templates ───────────────────────────────────────────────────────────
 
@@ -91,9 +93,33 @@ export function setupEditorInputHandlers(canvas: HTMLCanvasElement): () => void 
     const tile = getClickTile(e);
     if (!tile) return;
 
-    // Right-click on any tool: delete furniture at the clicked tile immediately
+    // Right-click on any tool: remove placed decoration or tile furniture at cursor
     if (e.button === 2) {
       e.preventDefault();
+
+      // First: try to remove a PlacedDecoration from the overlay system
+      const store = useEditorStore.getState();
+      const rect = canvas.getBoundingClientRect();
+      const camera = useOfficeStore.getState().camera;
+      const mapCols = OFFICE_TILE_MAP[0]?.length ?? 42;
+      const mapRows = OFFICE_TILE_MAP.length;
+      const mapWorldW = mapCols * 16;
+      const mapWorldH = mapRows * 16;
+      const zoom = camera.zoom;
+      const tx = (rect.width  - mapWorldW * zoom) / 2 - camera.x;
+      const ty = (rect.height - mapWorldH * zoom) / 2 - camera.y;
+      const rawWorldX = (e.clientX - rect.left - tx) / zoom;
+      const rawWorldY = (e.clientY - rect.top  - ty) / zoom;
+
+      if (store.placedDecorations.length > 0) {
+        const hitId = hitTestDecoration(store.placedDecorations, rawWorldX, rawWorldY);
+        if (hitId) {
+          store.removePlacedDecoration(hitId);
+          return;
+        }
+      }
+
+      // Fall back: remove tile-based FURNITURE item at this tile
       const idx = getFurnitureAt(tile.col, tile.row);
       if (idx !== null) {
         const item = FURNITURE[idx]!;
@@ -103,8 +129,8 @@ export function setupEditorInputHandlers(canvas: HTMLCanvasElement): () => void 
           revert() { addFurniture(item, idx); },
         };
         action.apply();
-        useEditorStore.getState().pushAction(action);
-        useEditorStore.getState().setSelectedCanvasFurniture(null);
+        store.pushAction(action);
+        store.setSelectedCanvasFurniture(null);
       }
       return;
     }
@@ -299,8 +325,20 @@ export function setupEditorInputHandlers(canvas: HTMLCanvasElement): () => void 
       return;
     }
 
-    // Delete selected furniture
+    // Delete selected furniture or last placed decoration
     if (e.key === 'Delete' || e.key === 'Backspace') {
+      const { activeTool, placedDecorations, removePlacedDecoration, pushAction } = useEditorStore.getState();
+      // In furniture/decorate mode: delete most recently placed decoration
+      if (activeTool === 'furniture' && placedDecorations.length > 0) {
+        const last = placedDecorations[placedDecorations.length - 1]!;
+        removePlacedDecoration(last.id);
+        pushAction({
+          description: 'Delete placed decoration',
+          apply() { removePlacedDecoration(last.id); },
+          revert() { useEditorStore.getState().addPlacedDecoration(last); },
+        });
+        return;
+      }
       deleteSelectedFurniture();
       return;
     }

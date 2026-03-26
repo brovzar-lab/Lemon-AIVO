@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useChat } from '@/hooks/useChat';
+import { useChatStore } from '@/store/chatStore';
 import { useOfficeStore } from '@/store/officeStore';
 import { useDealStore } from '@/store/dealStore';
 import { useFileStore } from '@/store/fileStore';
@@ -77,6 +78,47 @@ export function ChatPanel() {
 
   useEffect(() => { setShowMemory(false); }, [activeRoomId, activeDealId]);
 
+  // ── Auto-greeting on room entry ────────────────────────────────────────────
+  // Fires a one-time greeting when Billy enters an agent room for the first time.
+  // Guard uses both a module-level Set (survives StrictMode double-mount) and a
+  // per-render ref so navigating AWAY and BACK later re-triggers the greeting.
+  const greetingInFlightRef = useRef(false);
+  useEffect(() => {
+    if (!isAgentRoom(activeRoomId)) return;
+    // Prevent the second StrictMode effect run from firing a second API call
+    if (greetingInFlightRef.current) return;
+    greetingInFlightRef.current = true;
+
+    const agent = getAgent(activeRoomId);
+    if (!agent) return;
+
+    const greetings = [
+      `Hey! What can I do for you?`,
+      `Good to see you! How can I help?`,
+      `What brings you by?`,
+      `How are you? What's on your mind?`,
+      `I'm all yours — what do you need?`,
+      `Perfect timing. What's up?`,
+    ];
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)]!;
+
+    void (async () => {
+      const { getOrCreateConversation, addMessage } = useChatStore.getState();
+      const convId = await getOrCreateConversation(activeRoomId);
+      const conv = useChatStore.getState().conversations[convId];
+      // Double-guard: if the async already happened before us, bail out
+      if (conv && conv.messages.length > 0) return;
+      void addMessage(convId, { role: 'assistant', content: greeting, conversationId: convId });
+    })();
+
+    return () => {
+      // Re-arm so entering the SAME room again after leaving can re-greet
+      greetingInFlightRef.current = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId]);
+
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
@@ -127,7 +169,7 @@ export function ChatPanel() {
       >
         {/* Agent identity header */}
         {agent && (
-          <div style={{ borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ borderBottom: '1px solid var(--border)', flexShrink: 0, minHeight: 0 }}>
             {/* Thin color accent bar */}
             <div style={{
               height: 2,
@@ -137,10 +179,10 @@ export function ChatPanel() {
             }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: agent.color }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: agent.color }}>
                   {agent.name}
                 </span>
-                <span style={{ fontSize: 8, color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                   {agent.title}
                 </span>
               </div>

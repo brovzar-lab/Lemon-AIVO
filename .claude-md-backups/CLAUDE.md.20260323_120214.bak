@@ -1,0 +1,40 @@
+# LEMON AIVO
+
+## Architecture
+- Multi-agent AI workspace with pixel-art isometric office
+- React 19 + TypeScript 5.7 + Vite 6 + Zustand 5 + Tailwind CSS 4
+- Custom 2D game engine (Canvas API) with 6-layer rendering pipeline in `src/engine/`
+- 13 Zustand stores scoped by domain in `src/store/`
+- 6 AI agent personas configured in `src/config/agents/`
+- Anthropic Claude API proxied through Vite dev server (`/api/anthropic`)
+- Path alias: `@/` → `src/`
+- Deployed via Firebase Hosting (`dist/` directory)
+
+## Code Style
+- Design tokens in `src/pixelDesignSystem.css` — use CSS custom properties (`--space-*`, `--bg-*`, `--text-*`), not raw values
+- Fonts: Press Start 2P (pixel headings), Inter (UI body text)
+- Prefer CSS classes in pixelDesignSystem.css over inline styles (legacy codebase has heavy inline usage — migrate when touching a file)
+- Components grouped by feature domain in `src/components/` (chat/, canvas/, deal/, persona-builder/, collaboration/, memory/, files/, ui/)
+- No CSS Modules — flat global CSS with semantic class names
+
+## Commands
+- `npm run dev` — start Vite dev server (port 5173)
+- `npm run build` — typecheck + build
+- `npm run typecheck` — `tsc --noEmit`
+- `npm run lint` / `npm run lint:fix` — ESLint (v9 flat config)
+- `npm run format` — Prettier
+- `npm run test` — Vitest unit tests
+- `npm run test:e2e` — Playwright e2e tests
+
+## Testing
+- Unit tests: Vitest + jsdom + @testing-library/react
+- Canvas tests require `vitest-canvas-mock` (already configured in vitest.config.ts)
+- E2e tests: Playwright (chromium)
+- Test files: `src/**/*.test.{ts,tsx}`
+
+## Gotchas
+- ESLint v9 with flat config (`eslint.config.js`) — not the legacy `.eslintrc` format
+- `src/engine/furniture48Catalog.ts` is 3.3MB — avoid reading the full file
+- Sprites in `dist/` total 341MB — never commit raw sprites, only optimized
+- API key is in `.env` and proxied server-side — never expose to client bundle
+- TypeScript strict mode enabled — no implicit any, unused vars are warnings

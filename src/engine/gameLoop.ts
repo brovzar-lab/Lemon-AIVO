@@ -11,7 +11,8 @@ import { useOfficeStore } from '@/store/officeStore';
 import { useEditorStore } from '@/store/editorStore';
 import { updateCamera, computeAutoFitZoom } from './camera';
 import { updateAllCharacters } from './characters';
-import { OFFICE_TILE_MAP } from './officeLayout';
+import { OFFICE_TILE_MAP, FURNITURE, getCollisionExemptions } from './officeLayout';
+import { rebuildCollisionOverlay } from './tileMap';
 import { renderFrame } from './renderer';
 import { renderEditorOverlay } from './editorRenderer';
 import { getAudioManager } from './audioManager';
@@ -40,9 +41,9 @@ export function startGameLoop(canvas: HTMLCanvasElement): () => void {
   let prevWidth = 0;
   let prevHeight = 0;
 
-  // Startup zoom: 2.0x for clean pixel rendering. Auto-fit is the *minimum* zoom bound,
-  // not the starting zoom. Users can zoom out to auto-fit, but we don't start there.
-  let isAutoFitZoom = false; // start false so user can override; fit-to-screen is auto-fit reset only
+  // Auto-fit zoom: always start fitted so the entire office fills the canvas with no dead space.
+  // Stays true (re-fits on resize) until the user manually zooms in/out.
+  let isAutoFitZoom = true;
   let firstFrame = true;
 
   // Track quantized zoom to sync store only on 0.5-step changes
@@ -82,23 +83,18 @@ export function startGameLoop(canvas: HTMLCanvasElement): () => void {
       canvas.height = Math.floor(rect.height * dpr);
       ctx.imageSmoothingEnabled = false;
 
-      // Recalculate auto-fit zoom on resize (only if user hasn't manually overridden)
-      if (isAutoFitZoom && rect.width > 0 && rect.height > 0) {
+      // On first canvas size detection: set zoom directly (no animation)
+      if (firstFrame && rect.width > 0 && rect.height > 0) {
         const fitZoom = computeAutoFitZoom(rect.width, rect.height);
-        if (firstFrame) {
-          // First resize: set directly (no point animating initial load)
-          state.camera.zoom = fitZoom;
-          useOfficeStore.getState().setZoomLevel(fitZoom);
-        } else {
-          // Subsequent resizes: animate smoothly
-          startAnimatedZoom(zoomState, fitZoom, rect.width / 2, rect.height / 2);
-        }
+        state.camera.zoom = fitZoom;
+        useOfficeStore.getState().setZoomLevel(fitZoom);
       }
     }
 
-    // On first frame, auto-fit zoom so entire office is visible
+    // On first frame, auto-fit zoom so entire office is visible with no dead space
     if (firstFrame && prevWidth > 0 && prevHeight > 0) {
       firstFrame = false;
+      isAutoFitZoom = true;
       const fitZoom = computeAutoFitZoom(prevWidth, prevHeight);
       state.camera.zoom = fitZoom;
       useOfficeStore.getState().setZoomLevel(fitZoom);
@@ -145,6 +141,20 @@ export function startGameLoop(canvas: HTMLCanvasElement): () => void {
 
     // --- Zoom tick: run state machine each frame ---
     const minZoom = computeAutoFitZoom(canvasWidth, canvasHeight);
+
+    // Auto-fit: continuously apply the fit zoom every frame so the canvas
+    // immediately scales with the container — no cropping or dead space.
+    // Bypasses the zoom state machine entirely while in auto-fit mode.
+    if (isAutoFitZoom && canvasWidth > 0 && canvasHeight > 0) {
+      state.camera.zoom = minZoom;
+    }
+
+    // User-initiated zoom (wheel/pinch/buttons) sets phase to 'input'.
+    // Detect this to disable auto-fit so the user's chosen zoom is respected.
+    if (zoomState.phase === 'input') {
+      isAutoFitZoom = false;
+    }
+
     tickZoom(zoomState, state.camera, dt, canvasWidth, canvasHeight, minZoom);
 
     // Sync store ONLY when quantized zoom changes (prevents React re-render spam)
@@ -152,11 +162,6 @@ export function startGameLoop(canvas: HTMLCanvasElement): () => void {
     if (quantized !== prevQuantizedZoom) {
       prevQuantizedZoom = quantized;
       useOfficeStore.getState().setZoomLevel(state.camera.zoom);
-
-      // If zoom changed from a non-auto-fit source, mark as manual override
-      if (zoomState.phase !== 'idle') {
-        isAutoFitZoom = false;
-      }
     }
 
     // --- Audio triggers ---
@@ -219,6 +224,16 @@ export function startGameLoop(canvas: HTMLCanvasElement): () => void {
 
     rafId = requestAnimationFrame(frame);
   }
+
+  // Build collision overlay from current furniture so pathfinding works on
+  // the first frame — before any IDB restore that would rebuild it later.
+  // This ensures WAR_ROOM_SEATS and seatTiles are walkable from the start.
+  rebuildCollisionOverlay(
+    FURNITURE,
+    getCollisionExemptions(),
+    OFFICE_TILE_MAP.length,
+    OFFICE_TILE_MAP[0]?.length ?? 0,
+  );
 
   // Initialize idle behavior state machine (once per game session)
   initIdleBehaviors();

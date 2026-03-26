@@ -61,7 +61,7 @@ export function OverviewPanel() {
   const agentList = Object.values(agents) as PersonaConfig[];
 
   return (
-    <div style={{
+    <div data-testid="overview-panel" style={{
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
@@ -74,7 +74,7 @@ export function OverviewPanel() {
       {/* Header */}
       <div>
         <h2 style={{
-          fontSize: 9,
+          fontSize: 14,
           fontFamily: 'var(--font-pixel)',
           color: 'var(--accent-gold)',
           letterSpacing: 2,
@@ -82,7 +82,7 @@ export function OverviewPanel() {
         }}>
           COMMAND CENTER
         </h2>
-        <p style={{ fontSize: 9, color: 'var(--text-secondary)' }}>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
           Your agents are standing by
         </p>
       </div>
@@ -158,7 +158,7 @@ export function OverviewPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
                     <span style={{
-                      fontSize: 10,
+                      fontSize: 15,
                       fontWeight: 600,
                       color: agent.color,
                       whiteSpace: 'nowrap',
@@ -166,7 +166,7 @@ export function OverviewPanel() {
                       {agent.name}
                     </span>
                     <span style={{
-                      fontSize: 8,
+                      fontSize: 12,
                       color: 'var(--text-secondary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -177,7 +177,7 @@ export function OverviewPanel() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     {lastTimestamp && (
-                      <span style={{ fontSize: 7, color: 'var(--text-secondary)', fontFamily: 'var(--font-pixel)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-pixel)' }}>
                         {relativeTime(lastTimestamp)}
                       </span>
                     )}
@@ -187,7 +187,7 @@ export function OverviewPanel() {
 
                 {/* Bottom row: last message preview */}
                 <p style={{
-                  fontSize: 9,
+                  fontSize: 14,
                   color: 'var(--text-secondary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -205,7 +205,7 @@ export function OverviewPanel() {
 
       {/* Keyboard shortcut hint */}
       <p style={{
-        fontSize: 7,
+        fontSize: 11,
         color: 'var(--text-secondary)',
         textAlign: 'center',
         marginTop: 'auto',
