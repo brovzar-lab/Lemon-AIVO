@@ -6,6 +6,11 @@ import type { AgentId, AgentStatus } from '@/types/agent';
 
 const AGENT_IDS: AgentId[] = ['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'charlie'];
 
+interface LeftPanelProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
+
 /**
  * Left panel — Office Dashboard.
  * Matches TEST PIXEL TEAM left column:
@@ -13,8 +18,10 @@ const AGENT_IDS: AgentId[] = ['patrik', 'marcos', 'sandra', 'isaac', 'wendy', 'c
  * - Active Deals list
  * - Activity Log (persistent, event-driven)
  * - Office Stats (Working/Idle/Meeting)
+ *
+ * Supports collapsed mode: shows a slim icon strip instead of the full panel.
  */
-export function LeftPanel() {
+export function LeftPanel({ collapsed = false, onToggle }: LeftPanelProps) {
   const agentStatuses = useOfficeStore((s) => s.agentStatuses);
   const activeDealId = useDealStore((s) => s.activeDealId);
   const deals = useDealStore((s) => s.deals);
@@ -42,8 +49,33 @@ export function LeftPanel() {
     else stats.idle++; // 'idle' (default) → Idle
   });
 
+  if (collapsed) {
+    return (
+      <aside data-testid="left-panel" className="panel panel-left">
+        <div className="panel-collapsed-strip">
+          <div className="collapsed-icon" onClick={onToggle} title="Expand dashboard">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" /></svg>
+          </div>
+          <div className="collapsed-icon" onClick={onToggle} title="Activity log">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+          </div>
+          <div className="collapsed-icon" onClick={onToggle} title="Office stats">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside data-testid="left-panel" className="panel panel-left">
+      {/* Collapse toggle */}
+      {onToggle && (
+        <button className="panel-collapse-btn" onClick={onToggle} aria-label="Collapse left panel" title="Collapse">
+          ‹
+        </button>
+      )}
+
       {/* Header */}
       <div style={{
         padding: '14px 12px 8px',
@@ -53,7 +85,7 @@ export function LeftPanel() {
       }}>
         <div style={{
           fontFamily: 'var(--font-pixel)',
-          fontSize: 11,
+          fontSize: 'var(--pixel-md)',
           color: 'var(--accent-teal-light)',
           letterSpacing: 2,
           marginBottom: 2,
@@ -61,7 +93,7 @@ export function LeftPanel() {
           LEMON STUDIOS
         </div>
         <div style={{
-          fontSize: 9,
+          fontSize: 'var(--text-xs)',
           color: 'var(--text-secondary)',
           fontWeight: 500,
           textTransform: 'uppercase',
@@ -80,7 +112,7 @@ export function LeftPanel() {
         overflow: 'hidden',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div className="section-title" style={{ color: 'var(--accent-coral)', fontSize: 8, letterSpacing: 1.5, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div className="section-title" style={{ color: 'var(--accent-coral)', fontSize: 'var(--pixel-xs)', letterSpacing: 1.5, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
               <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
@@ -88,7 +120,7 @@ export function LeftPanel() {
             ACTIVE DEALS
           </div>
           <span style={{
-            fontSize: 8, color: 'var(--accent-coral-dim, var(--accent-coral))', fontWeight: 600,
+            fontSize: 'var(--pixel-xs)', color: 'var(--accent-coral-dim, var(--accent-coral))', fontWeight: 600,
             padding: '2px 6px', background: 'var(--bg-card)', borderRadius: 8,
           }}>
             {deals.filter((d) => d.status === 'active').length} open
@@ -100,7 +132,7 @@ export function LeftPanel() {
             <DealCard key={deal.id} deal={deal} isActive={deal.id === activeDealId} />
           ))}
           {deals.filter((d) => d.status === 'active').length === 0 && (
-            <div style={{ fontSize: 9, color: 'var(--text-secondary)', padding: 12, textAlign: 'center' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', padding: 12, textAlign: 'center' }}>
               No active deals
             </div>
           )}
@@ -141,7 +173,7 @@ export function LeftPanel() {
       }}>
         <span style={{
           fontFamily: 'var(--font-pixel)',
-          fontSize: 8,
+          fontSize: 'var(--pixel-xs)',
           color: 'var(--text-secondary)',
           letterSpacing: 1,
         }}>

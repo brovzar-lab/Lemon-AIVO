@@ -1,22 +1,41 @@
+import { useRef, useCallback } from 'react';
 import { useOfficeStore } from '@/store/officeStore';
 import { startAnimatedZoom, nearestHalf, MAX_ZOOM } from '@/engine/zoomController';
 import { zoomState } from '@/engine/input';
 import { computeAutoFitZoom } from '@/engine/camera';
 
+/**
+ * Zoom +/- buttons positioned at the bottom-right of the canvas container.
+ * Uses the actual canvas container dimensions (not window) for auto-fit calculations.
+ */
 export function ZoomControls() {
   const zoomLevel = useOfficeStore((s) => s.zoomLevel);
   const setZoomLevel = useOfficeStore((s) => s.setZoomLevel);
-  const minZoom = computeAutoFitZoom(window.innerWidth, window.innerHeight);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Get canvas container dimensions from the parent element
+  const getContainerRect = useCallback(() => {
+    const parent = containerRef.current?.parentElement;
+    if (!parent) return { width: window.innerWidth, height: window.innerHeight };
+    const rect = parent.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }, []);
+
+  const { width: cw, height: ch } = getContainerRect();
+  const minZoom = computeAutoFitZoom(cw, ch);
 
   function handleZoomIn(): void {
+    const { width, height } = getContainerRect();
     const target = Math.min(nearestHalf(zoomLevel) + 0.5, MAX_ZOOM);
-    startAnimatedZoom(zoomState, target, window.innerWidth / 2, window.innerHeight / 2);
+    startAnimatedZoom(zoomState, target, width / 2, height / 2);
     setZoomLevel(target);
   }
 
   function handleZoomOut(): void {
-    const target = Math.max(nearestHalf(zoomLevel) - 0.5, minZoom);
-    startAnimatedZoom(zoomState, target, window.innerWidth / 2, window.innerHeight / 2);
+    const { width, height } = getContainerRect();
+    const min = computeAutoFitZoom(width, height);
+    const target = Math.max(nearestHalf(zoomLevel) - 0.5, min);
+    startAnimatedZoom(zoomState, target, width / 2, height / 2);
     setZoomLevel(target);
   }
 
@@ -35,7 +54,7 @@ export function ZoomControls() {
   };
 
   return (
-    <div data-testid="zoom-controls" style={{
+    <div ref={containerRef} data-testid="zoom-controls" style={{
       position: 'absolute', bottom: 20, right: 20, zIndex: 10,
       display: 'flex', flexDirection: 'column', gap: 3,
     }}>

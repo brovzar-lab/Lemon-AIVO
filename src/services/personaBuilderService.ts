@@ -52,7 +52,7 @@ export async function runInterviewTurn(
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: 1024,
-      system: buildInterviewSystemPrompt(agentId),
+      system: [{ type: 'text', text: buildInterviewSystemPrompt(agentId), cache_control: { type: 'ephemeral' } }],
       messages: finalMessages,
     });
 
@@ -224,7 +224,7 @@ export async function runPreviewTurn(
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: 2048,
-      system: previewSystemPrompt,
+      system: [{ type: 'text', text: previewSystemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: apiMessages,
     });
 

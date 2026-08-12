@@ -37,7 +37,7 @@ export async function sendStreamingMessage(
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
-      system: context.systemPrompt,
+      system: [{ type: 'text', text: context.systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: context.messages,
       ...(tools && tools.length > 0 ? { tools, tool_choice: { type: 'auto' } } : {}),
     });

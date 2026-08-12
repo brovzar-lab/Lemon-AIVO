@@ -44,3 +44,6 @@ Lemon Studios Brand/
 
 # Logs
 firebase-debug.log
+
+# Graphify knowledge graph
+graphify-out/

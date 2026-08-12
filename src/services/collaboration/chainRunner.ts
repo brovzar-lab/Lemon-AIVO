@@ -131,7 +131,7 @@ export async function sendInitialCollaborationMessage(
       {
         model: DEFAULT_MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
-        system: context.systemPrompt,
+        system: [{ type: 'text', text: context.systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userInstruction }],
         tools: [CONSULTATION_TOOL],
         tool_choice: { type: 'auto' },

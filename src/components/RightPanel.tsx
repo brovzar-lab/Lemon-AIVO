@@ -5,12 +5,19 @@ import { CollaborationPanel } from '@/components/collaboration/CollaborationPane
 import { CollabHistoryList } from '@/components/collaboration/CollabHistoryList';
 import { HopApprovalModal } from '@/components/collaboration/HopApprovalModal';
 
+interface RightPanelProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
+
 /**
  * Right panel — Chat + Teamwork.
  * Matches TEST PIXEL TEAM's right column: chat on top, teamwork on bottom.
- * Width: 270px, dark panel with left border.
+ * Uses CSS Grid column sizing instead of inline widths.
+ *
+ * Supports collapsed mode: shows a slim icon strip instead of the full panel.
  */
-export function RightPanel() {
+export function RightPanel({ collapsed = false, onToggle }: RightPanelProps) {
   const activeChain = useCollaborationStore((s) => s.activeChain);
   const pendingHop = useCollaborationStore((s) => s.pendingHop);
   const chainHistory = useCollaborationStore((s) => s.chainHistory);
@@ -23,18 +30,41 @@ export function RightPanel() {
     if (hasCollabActivity) setShowTeamwork(true);
   }, [hasCollabActivity]);
 
+  if (collapsed) {
+    return (
+      <>
+        <aside data-testid="right-panel" className="panel panel-right">
+          <div className="panel-collapsed-strip">
+            <div className="collapsed-icon" onClick={onToggle} title="Expand chat">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+            </div>
+            {hasCollabActivity && (
+              <div className="collapsed-icon" onClick={onToggle} title="Teamwork">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
+              </div>
+            )}
+            {pendingHop && (
+              <div className="collapsed-icon" onClick={onToggle} title="Hop pending!" style={{ background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)' }}>
+                !
+              </div>
+            )}
+          </div>
+        </aside>
+        <HopApprovalModal />
+      </>
+    );
+  }
+
   return (
     <>
-      <aside data-testid="right-panel" style={{
-        width: 'var(--panel-width)',
-        minWidth: 'var(--panel-width)',
-        height: '100%',
-        background: 'var(--bg-panel)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        borderLeft: '1px solid var(--border)',
-      }}>
+      <aside data-testid="right-panel" className="panel panel-right">
+        {/* Collapse toggle */}
+        {onToggle && (
+          <button className="panel-collapse-btn" onClick={onToggle} aria-label="Collapse right panel" title="Collapse">
+            ›
+          </button>
+        )}
+
         {/* ─── Top: Chat ─── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Chat header */}
@@ -46,7 +76,7 @@ export function RightPanel() {
           }}>
             <div style={{
               fontFamily: 'var(--font-pixel)',
-              fontSize: 11,
+              fontSize: 'var(--pixel-md)',
               color: 'var(--accent-teal-light)',
               letterSpacing: 2,
               marginBottom: 2,
@@ -54,7 +84,7 @@ export function RightPanel() {
               TEAM CHAT
             </div>
             <div style={{
-              fontSize: 9,
+              fontSize: 'var(--text-xs)',
               color: 'var(--text-secondary)',
               fontWeight: 500,
               textTransform: 'uppercase',
@@ -77,13 +107,13 @@ export function RightPanel() {
               justifyContent: 'space-between',
               flexShrink: 0,
             }}>
-              <span style={{ fontSize: 9, color: 'var(--accent-gold)', fontFamily: 'var(--font-pixel)' }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--accent-gold)', fontFamily: 'var(--font-pixel)' }}>
                 HOP PENDING
               </span>
               <button
                 onClick={() => setShowTeamwork(true)}
                 style={{
-                  fontSize: 9,
+                  fontSize: 'var(--text-xs)',
                   color: 'var(--accent-gold)',
                   background: 'transparent',
                   border: '1px solid var(--accent-gold)',
@@ -129,7 +159,7 @@ export function RightPanel() {
             >
               <span style={{
                 fontFamily: 'var(--font-pixel)',
-                fontSize: 8,
+                fontSize: 'var(--pixel-xs)',
                 color: 'var(--accent-gold)',
                 letterSpacing: 1.5,
                 display: 'flex',
@@ -145,7 +175,7 @@ export function RightPanel() {
                 TEAMWORK
               </span>
               <span style={{
-                fontSize: 8,
+                fontSize: 'var(--pixel-xs)',
                 color: 'var(--accent-gold-dim, var(--text-secondary))',
                 fontWeight: 600,
                 padding: '2px 6px',

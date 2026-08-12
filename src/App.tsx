@@ -47,6 +47,8 @@ function App() {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [fileMgrAgent, setFileMgrAgent] = useState<AgentId | null>(null);
   const [isDeskDragOver, setIsDeskDragOver] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('lemon-left-collapsed') === 'true');
+  const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem('lemon-right-collapsed') === 'true');
   const deskFileInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -234,19 +236,44 @@ function App() {
     setNeedsMigration(false);
   };
 
+  // Panel collapse handlers
+  const toggleLeft = useCallback(() => {
+    setLeftCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('lemon-left-collapsed', String(next));
+      return next;
+    });
+  }, []);
+
+  const toggleRight = useCallback(() => {
+    setRightCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('lemon-right-collapsed', String(next));
+      return next;
+    });
+  }, []);
+
+  // Compute grid class
+  const mainClass = ['app-main',
+    leftCollapsed && rightCollapsed ? 'both-collapsed' :
+    leftCollapsed ? 'left-collapsed' :
+    rightCollapsed ? 'right-collapsed' : '',
+  ].filter(Boolean).join(' ');
+
   if (!ready) {
     return (
-      <div style={{ height: '100vh', background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: '100dvh', background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--text-secondary)', fontSize: 18 }}>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ height: '100vh', background: 'var(--bg-dark)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', background: 'var(--bg-dark)', display: 'flex', flexDirection: 'column' }}>
       {/* Top bar — Pixel Agents game-panel style */}
       <div style={{
-        height: 44,
+        height: 'var(--header-height)',
+        minHeight: 36,
         background: 'linear-gradient(180deg, #2d2d2d 0%, #1e1e1e 100%)',
         borderBottom: '3px solid #3a3a3a',
         display: 'flex',
@@ -257,7 +284,7 @@ function App() {
       }}>
         <span style={{
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: 11,
+          fontSize: 'var(--pixel-md)',
           color: '#fbbf24',
           textShadow: '1px 1px 0 #92400e, 2px 2px 0 rgba(0,0,0,0.5)',
           letterSpacing: 1,
@@ -266,7 +293,7 @@ function App() {
         </span>
         <span style={{
           marginLeft: 12,
-          fontSize: 10,
+          fontSize: 'var(--text-sm)',
           color: '#64748b',
           fontFamily: 'monospace',
           letterSpacing: 1,
@@ -275,9 +302,9 @@ function App() {
         </span>
       </div>
 
-      <main ref={mainRef} style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      <main ref={mainRef} className={mainClass}>
         <ErrorBoundary name="Deals & Activity">
-          <LeftPanel />
+          <LeftPanel collapsed={leftCollapsed} onToggle={toggleLeft} />
         </ErrorBoundary>
 
         {/* Center column — agent bar + canvas */}
@@ -328,7 +355,7 @@ function App() {
 
         {/* Right panel — Chat + Teamwork */}
         <ErrorBoundary name="Chat & Collaboration">
-          <RightPanel />
+          <RightPanel collapsed={rightCollapsed} onToggle={toggleRight} />
         </ErrorBoundary>
       </main>
 

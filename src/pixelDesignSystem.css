@@ -39,16 +39,16 @@
   --font-pixel: 'Press Start 2P', monospace;
   --font-ui: 'Inter', -apple-system, sans-serif;
 
-  /* ─── Type scale (Minor Third 1.2) ─── */
-  --text-xs: 9px;
-  --text-sm: 10px;
-  --text-base: 12px;
-  --text-md: 14px;
-  --text-lg: 16px;
-  --text-xl: 20px;
-  --pixel-xs: 8px;
-  --pixel-sm: 10px;
-  --pixel-md: 12px;
+  /* ─── Type scale (scales gracefully with viewport) ─── */
+  --text-xs: clamp(8px, 0.5vw + 4px, 10px);
+  --text-sm: clamp(9px, 0.55vw + 5px, 11px);
+  --text-base: clamp(11px, 0.6vw + 6px, 13px);
+  --text-md: clamp(13px, 0.65vw + 7px, 15px);
+  --text-lg: clamp(15px, 0.7vw + 8px, 17px);
+  --text-xl: clamp(18px, 0.8vw + 10px, 22px);
+  --pixel-xs: clamp(7px, 0.45vw + 3px, 9px);
+  --pixel-sm: clamp(9px, 0.5vw + 5px, 11px);
+  --pixel-md: clamp(10px, 0.55vw + 5px, 13px);
 
   /* ─── Spacing (8-point grid) ─── */
   --space-1: 4px;
@@ -59,11 +59,14 @@
   --space-6: 32px;
 
   /* ─── Layout ─── */
-  --panel-width: 270px;
+  --panel-width: clamp(180px, 18vw, 280px);
+  --panel-collapsed: 42px;
+  --header-height: clamp(36px, 3.5vw, 44px);
 }
 
 html, body {
   width: 100%; height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg-dark);
   font-family: var(--font-ui);
@@ -76,19 +79,41 @@ html, body {
    ═══════════════════════════════════════════ */
 #root {
   display: flex;
-  height: 100vh;
+  flex-direction: column;
+  height: 100dvh;
   width: 100vw;
+}
+
+/* ─── Main 3-column grid ─── */
+.app-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--panel-width) 1fr var(--panel-width);
+  overflow: hidden;
+  min-height: 0;
+  transition: grid-template-columns 0.25s ease;
+}
+
+.app-main.left-collapsed {
+  grid-template-columns: var(--panel-collapsed) 1fr var(--panel-width);
+}
+.app-main.right-collapsed {
+  grid-template-columns: var(--panel-width) 1fr var(--panel-collapsed);
+}
+.app-main.both-collapsed {
+  grid-template-columns: var(--panel-collapsed) 1fr var(--panel-collapsed);
 }
 
 /* ─── Shared Panel Base ─── */
 .panel {
-  width: var(--panel-width);
-  min-width: var(--panel-width);
-  height: 100vh;
+  height: 100%;
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  transition: opacity 0.2s ease;
+  position: relative;
 }
 
 .panel-left {
@@ -99,6 +124,79 @@ html, body {
 }
 
 .panel-right { border-left: 1px solid var(--border); }
+
+/* ─── Collapse Toggle Button ─── */
+.panel-collapse-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  z-index: 5;
+  transition: background 0.15s, color 0.15s;
+  opacity: 0;
+  padding: 0;
+}
+
+.panel:hover .panel-collapse-btn,
+.panel-collapse-btn:focus-visible {
+  opacity: 1;
+}
+
+.panel-collapse-btn:hover {
+  background: var(--accent-teal);
+  color: var(--text-bright);
+}
+
+.panel-left .panel-collapse-btn {
+  right: -16px;
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.panel-right .panel-collapse-btn {
+  left: -16px;
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+
+/* ─── Collapsed panel content ─── */
+.panel-collapsed-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  height: 100%;
+  background: var(--bg-panel);
+}
+
+.panel-collapsed-strip .collapsed-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-size: 14px;
+}
+
+.panel-collapsed-strip .collapsed-icon:hover {
+  background: var(--accent-teal);
+  color: var(--text-bright);
+}
 
 .panel-header {
   padding: 14px 12px 8px;
@@ -1242,11 +1340,24 @@ canvas#office-canvas {
 }
 
 /* ═══════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE — Progressive breakpoints
    ═══════════════════════════════════════════ */
+@media (max-width: 1400px) {
+  :root { --panel-width: clamp(180px, 17vw, 250px); }
+}
+
 @media (max-width: 1100px) {
-  :root { --panel-width: 230px; }
+  :root { --panel-width: clamp(170px, 16vw, 220px); }
   .right-bottom { height: 200px; min-height: 160px; }
+}
+
+@media (max-width: 900px) {
+  :root { --panel-width: clamp(160px, 15vw, 190px); }
+  /* Auto-collapse panels below 900px */
+  .app-main {
+    grid-template-columns: var(--panel-collapsed) 1fr var(--panel-collapsed);
+  }
+  .panel-collapse-btn { opacity: 1; }
 }
 
 /* ═══════════════════════════════════════════

@@ -97,7 +97,7 @@ async def agent_loop(
         client.messages.create,
         model=model,
         max_tokens=4096,
-        system=EVALUATION_PROMPT,
+        system=[{"type": "text", "text": EVALUATION_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=messages,
         tools=tools,
     )
@@ -138,7 +138,7 @@ async def agent_loop(
             client.messages.create,
             model=model,
             max_tokens=4096,
-            system=EVALUATION_PROMPT,
+            system=[{"type": "text", "text": EVALUATION_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=messages,
             tools=tools,
         )
